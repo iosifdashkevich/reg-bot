@@ -20,9 +20,6 @@ LEAD_COUNTER = 0
 # ───────── START ─────────
 @router.message(F.text == "/start")
 async def start(message: Message, state: FSMContext):
-    # ЖЁСТКО убираем любую старую клавиатуру
-    await message.answer("Начинаем заново 👌", reply_markup=remove_kb())
-
     await state.clear()
     await state.set_state(RegForm.citizenship)
 
@@ -70,7 +67,9 @@ async def set_urgency(cb: CallbackQuery, state: FSMContext):
     await state.update_data(urgency=cb.data)
     await state.set_state(RegForm.name)
 
-    await cb.message.edit_text("Введите ваше имя:")
+    await cb.message.edit_text(
+        "Введите ваше имя:"
+    )
 
 
 # ───────── NAME ─────────
@@ -79,10 +78,7 @@ async def set_name(message: Message, state: FSMContext):
     await state.update_data(name=message.text)
     await state.set_state(RegForm.contact)
 
-    # 🔥 сначала убираем всё старое
-    await message.answer("")
-
-    # 🔥 потом показываем кнопку
+    # ⬅️ ИСПРАВЛЕННЫЙ БЛОК (без пустых сообщений)
     await message.answer(
         "Введите номер телефона или нажмите кнопку ниже 👇",
         reply_markup=contact_kb()
@@ -107,7 +103,7 @@ async def process_finish(message: Message, state: FSMContext):
 
     data = await state.get_data()
 
-    # если состояние уже очищено — игнорируем повторный контакт
+    # защита от повторного нажатия
     if not data:
         await message.answer(
             "Заявка уже принята ✅\n\n"
@@ -135,7 +131,7 @@ async def process_finish(message: Message, state: FSMContext):
         f"👤 Telegram: @{message.from_user.username}"
     )
 
-    # админу
+    # сообщение админу
     await message.bot.send_message(
         ADMIN_ID,
         text,
@@ -143,7 +139,7 @@ async def process_finish(message: Message, state: FSMContext):
         reply_markup=admin_lead_kb(LEAD_COUNTER)
     )
 
-    # пользователю — ЖЁСТКО убираем клавиатуру
+    # сообщение пользователю + убрать клавиатуру
     await message.answer(
         "✅ Заявка отправлена.\n\n"
         "Мы свяжемся с вами в ближайшее время.",
