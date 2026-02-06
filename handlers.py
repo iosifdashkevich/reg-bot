@@ -1,4 +1,4 @@
-from aiogram import Router
+from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 
@@ -18,7 +18,7 @@ LEAD_COUNTER = 0
 
 
 # ───────── START ─────────
-@router.message(commands=["start"])
+@router.message(F.text == "/start")
 async def start(message: Message, state: FSMContext):
     await state.clear()
     await state.set_state(RegForm.citizenship)
@@ -84,7 +84,7 @@ async def finish_contact(message: Message, state: FSMContext):
 
     data = await state.get_data()
 
-    # защита от повторных кликов
+    # если состояние уже очищено — защита от повторных кликов
     if not data:
         await message.answer(
             "Заявка уже принята ✅\n\nНажмите /start для новой заявки",
@@ -95,7 +95,7 @@ async def finish_contact(message: Message, state: FSMContext):
     await state.clear()
     LEAD_COUNTER += 1
 
-    # ЛОВИМ И КНОПКУ, И ТЕКСТ
+    # ловим И контакт кнопкой, И текст
     if message.contact:
         contact_value = message.contact.phone_number
     else:
