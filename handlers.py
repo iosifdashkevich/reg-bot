@@ -23,11 +23,11 @@ async def start(message: Message, state: FSMContext):
     await state.clear()
     await state.set_state(RegForm.citizenship)
 
-    # 🔥 БЛОК С КАНАЛОМ (вариант 1)
+    # 🔹 КНОПКА НА КАНАЛ (вариант 1)
     await message.answer(
-        "📢 *Перед началом рекомендуем ознакомиться с информацией в нашем Telegram-канале.*\n"
-        "Там вы найдёте ответы на частые вопросы и подробные условия.",
-        parse_mode="Markdown",
+        "📢 Перед началом рекомендуем ознакомиться с информацией "
+        "в нашем Telegram-канале.\n"
+        "Там вы найдёте ответы на частые вопросы и условия.",
         reply_markup=channel_kb()
     )
 
@@ -77,7 +77,7 @@ async def step_name(message: Message, state: FSMContext):
 
     await state.set_state(RegForm.contact)
     await message.answer(
-        "📞 Оставьте номер телефона или нажмите кнопку ниже.\n\n"
+        "📞 Оставьте номер телефона или нажмите кнопку ниже.\n"
         "Менеджер свяжется с вами в ближайшее время.",
         reply_markup=contact_kb()
     )
@@ -103,30 +103,29 @@ async def finish(message: Message, state: FSMContext):
         else f"tg://user?id={message.from_user.id}"
     )
 
-    # ✅ Сообщение клиенту + ссылка на канал (вариант 3)
+    # ✅ СООБЩЕНИЕ КЛИЕНТУ — БЕЗ Markdown
     await message.answer(
-        "✅ *Заявка принята!*\n\n"
-        "Менеджер свяжется с вами в течение *5–15 минут*.\n\n"
-        "📢 Пока ожидаете, вы можете подробнее ознакомиться с информацией в нашем канале:\n"
-        "👉 https://t.me/propiska_v_moskve_1",
-        parse_mode="Markdown",
+        "✅ Заявка принята!\n\n"
+        "Менеджер свяжется с вами в течение 5–15 минут.\n\n"
+        "📢 Пока ожидаете, можете ознакомиться с информацией в нашем канале:\n"
+        "https://t.me/propiska_v_moskve_1",
         reply_markup=remove_kb()
     )
 
+    # 📥 СООБЩЕНИЕ АДМИНУ
     admin_text = (
-        f"📥 *Новая заявка №{LEAD_COUNTER}*\n\n"
-        f"👤 Имя: {data['name']}\n"
-        f"📞 Телефон: {contact}\n"
-        f"👤 Telegram: {username}\n\n"
-        f"🪪 Статус: {data['citizenship']}\n"
-        f"🗓 Срок: {data['term']}\n"
-        f"⏱ Срочность: {data['urgency']}"
+        f"📥 Новая заявка №{LEAD_COUNTER}\n\n"
+        f"Имя: {data['name']}\n"
+        f"Телефон: {contact}\n"
+        f"Telegram: {username}\n\n"
+        f"Статус: {data['citizenship']}\n"
+        f"Срок: {data['term']}\n"
+        f"Срочность: {data['urgency']}"
     )
 
     await message.bot.send_message(
         ADMIN_ID,
         admin_text,
-        parse_mode="Markdown",
         reply_markup=admin_lead_kb(LEAD_COUNTER)
     )
 
@@ -134,12 +133,12 @@ async def finish(message: Message, state: FSMContext):
 @router.callback_query(F.data.startswith("lead_work_"))
 async def lead_in_work(cb: CallbackQuery):
     await cb.message.edit_reply_markup()
-    await cb.message.reply("🟡 Статус заявки: *В работе*", parse_mode="Markdown")
+    await cb.message.reply("🟡 Статус заявки: В работе")
     await cb.answer()
 
 
 @router.callback_query(F.data.startswith("lead_done_"))
 async def lead_done(cb: CallbackQuery):
     await cb.message.edit_reply_markup()
-    await cb.message.reply("✅ Статус заявки: *Закрыта*", parse_mode="Markdown")
+    await cb.message.reply("✅ Статус заявки: Закрыта")
     await cb.answer()
