@@ -67,9 +67,7 @@ async def set_urgency(cb: CallbackQuery, state: FSMContext):
     await state.update_data(urgency=cb.data)
     await state.set_state(RegForm.name)
 
-    await cb.message.edit_text(
-        "Введите ваше имя:"
-    )
+    await cb.message.edit_text("Введите ваше имя:")
 
 
 # ───────── NAME ─────────
@@ -84,16 +82,26 @@ async def set_name(message: Message, state: FSMContext):
     )
 
 
-# ───────── CONTACT (TEXT ИЛИ КНОПКА) ─────────
-@router.message(RegForm.contact, F.contact | F.text)
-async def finish_contact(message: Message, state: FSMContext):
+# ───────── CONTACT (КНОПКА) ─────────
+@router.message(RegForm.contact, F.contact)
+async def finish_contact_by_button(message: Message, state: FSMContext):
+    await process_finish(message, state)
+
+
+# ───────── CONTACT (ТЕКСТ) ─────────
+@router.message(RegForm.contact, F.text)
+async def finish_contact_by_text(message: Message, state: FSMContext):
+    await process_finish(message, state)
+
+
+# ───────── ОБЩАЯ ЛОГИКА ─────────
+async def process_finish(message: Message, state: FSMContext):
     global LEAD_COUNTER
 
     data = await state.get_data()
     await state.clear()
     LEAD_COUNTER += 1
 
-    # если пользователь нажал кнопку — contact, если ввёл руками — text
     contact_value = (
         message.contact.phone_number
         if message.contact
@@ -110,7 +118,7 @@ async def finish_contact(message: Message, state: FSMContext):
         f"👤 Telegram: @{message.from_user.username}"
     )
 
-    # сообщение админу
+    # админу
     await message.bot.send_message(
         ADMIN_ID,
         text,
@@ -118,7 +126,7 @@ async def finish_contact(message: Message, state: FSMContext):
         reply_markup=admin_lead_kb(LEAD_COUNTER)
     )
 
-    # сообщение пользователю + убрать клавиатуру
+    # пользователю
     await message.answer(
         "✅ Заявка отправлена.\n\n"
         "Мы свяжемся с вами в ближайшее время.",
