@@ -20,6 +20,9 @@ LEAD_COUNTER = 0
 # ───────── START ─────────
 @router.message(F.text == "/start")
 async def start(message: Message, state: FSMContext):
+    # ЖЁСТКО убираем любую старую клавиатуру
+    await message.answer("Начинаем заново 👌", reply_markup=remove_kb())
+
     await state.clear()
     await state.set_state(RegForm.citizenship)
 
@@ -76,6 +79,10 @@ async def set_name(message: Message, state: FSMContext):
     await state.update_data(name=message.text)
     await state.set_state(RegForm.contact)
 
+    # 🔥 сначала убираем всё старое
+    await message.answer("")
+
+    # 🔥 потом показываем кнопку
     await message.answer(
         "Введите номер телефона или нажмите кнопку ниже 👇",
         reply_markup=contact_kb()
@@ -99,6 +106,16 @@ async def process_finish(message: Message, state: FSMContext):
     global LEAD_COUNTER
 
     data = await state.get_data()
+
+    # если состояние уже очищено — игнорируем повторный контакт
+    if not data:
+        await message.answer(
+            "Заявка уже принята ✅\n\n"
+            "Если нужно оформить ещё одну — нажмите /start",
+            reply_markup=remove_kb()
+        )
+        return
+
     await state.clear()
     LEAD_COUNTER += 1
 
@@ -126,7 +143,7 @@ async def process_finish(message: Message, state: FSMContext):
         reply_markup=admin_lead_kb(LEAD_COUNTER)
     )
 
-    # пользователю
+    # пользователю — ЖЁСТКО убираем клавиатуру
     await message.answer(
         "✅ Заявка отправлена.\n\n"
         "Мы свяжемся с вами в ближайшее время.",
