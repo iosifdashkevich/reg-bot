@@ -1,14 +1,16 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 
+
 def citizenship_kb():
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="Гражданин РФ")],
-            [KeyboardButton(text="СНГ")],
-            [KeyboardButton(text="Беларусь")]
+            [KeyboardButton(text="🇷🇺 Гражданин РФ")],
+            [KeyboardButton(text="🌍 СНГ")],
+            [KeyboardButton(text="🇧🇾 Беларусь")]
         ],
         resize_keyboard=True
     )
+
 
 def term_kb():
     return ReplyKeyboardMarkup(
@@ -20,6 +22,7 @@ def term_kb():
         resize_keyboard=True
     )
 
+
 def urgency_kb():
     return ReplyKeyboardMarkup(
         keyboard=[
@@ -30,6 +33,7 @@ def urgency_kb():
         resize_keyboard=True
     )
 
+
 def contact_kb():
     return ReplyKeyboardMarkup(
         keyboard=[
@@ -37,6 +41,7 @@ def contact_kb():
         ],
         resize_keyboard=True
     )
+
 
 def remove_kb():
     return ReplyKeyboardRemove()
