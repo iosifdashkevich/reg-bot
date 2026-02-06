@@ -1,4 +1,4 @@
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton
 
 
 def citizenship_kb():
@@ -45,3 +45,21 @@ def contact_kb():
 
 def remove_kb():
     return ReplyKeyboardRemove()
+
+
+# 🔥 Админ-кнопки
+def admin_lead_kb(lead_id: int):
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🟡 В работе",
+                    callback_data=f"lead_work_{lead_id}"
+                ),
+                InlineKeyboardButton(
+                    text="✅ Закрыта",
+                    callback_data=f"lead_done_{lead_id}"
+                )
+            ]
+        ]
+    )
