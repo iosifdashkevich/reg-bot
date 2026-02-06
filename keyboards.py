@@ -1,4 +1,10 @@
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import (
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+    ReplyKeyboardMarkup,
+    KeyboardButton,
+    ReplyKeyboardRemove
+)
 
 def start_kb():
     return InlineKeyboardMarkup(inline_keyboard=[
@@ -25,6 +31,18 @@ def urgency_kb():
         [InlineKeyboardButton(text="В течение недели", callback_data="week")],
         [InlineKeyboardButton(text="Не срочно", callback_data="free")]
     ])
+
+def contact_kb():
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="📞 Поделиться контактом", request_contact=True)]
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=True
+    )
+
+def remove_kb():
+    return ReplyKeyboardRemove()
 
 def admin_lead_kb(lead_id):
     return InlineKeyboardMarkup(inline_keyboard=[
