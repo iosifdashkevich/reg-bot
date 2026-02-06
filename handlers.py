@@ -17,12 +17,10 @@ router = Router()
 LEAD_COUNTER = 0
 
 
-# ───────── START ─────────
 @router.message(F.text == "/start")
 async def start(message: Message, state: FSMContext):
     await state.clear()
     await state.set_state(RegForm.citizenship)
-
     await message.answer(
         "👋 Здравствуйте!\n\n"
         "Помогаем с официальной временной регистрацией в Москве и МО.\n\n"
@@ -31,7 +29,6 @@ async def start(message: Message, state: FSMContext):
     )
 
 
-# ───────── CITIZENSHIP ─────────
 @router.callback_query(RegForm.citizenship)
 async def set_cit(cb: CallbackQuery, state: FSMContext):
     await state.update_data(citizenship=cb.data)
@@ -42,7 +39,6 @@ async def set_cit(cb: CallbackQuery, state: FSMContext):
     )
 
 
-# ───────── TERM ─────────
 @router.callback_query(RegForm.term)
 async def set_term(cb: CallbackQuery, state: FSMContext):
     prices = {
@@ -58,7 +54,6 @@ async def set_term(cb: CallbackQuery, state: FSMContext):
     )
 
 
-# ───────── URGENCY ─────────
 @router.callback_query(RegForm.urgency)
 async def set_urgency(cb: CallbackQuery, state: FSMContext):
     await state.update_data(urgency=cb.data)
@@ -66,7 +61,6 @@ async def set_urgency(cb: CallbackQuery, state: FSMContext):
     await cb.message.edit_text("Введите ваше имя:")
 
 
-# ───────── NAME ─────────
 @router.message(RegForm.name)
 async def set_name(message: Message, state: FSMContext):
     await state.update_data(name=message.text)
@@ -77,51 +71,44 @@ async def set_name(message: Message, state: FSMContext):
     )
 
 
-# ───────── CONTACT (ЕДИНСТВЕННЫЙ ХЕНДЛЕР) ─────────
 @router.message(RegForm.contact)
 async def finish_contact(message: Message, state: FSMContext):
     global LEAD_COUNTER
 
     data = await state.get_data()
-
-    # если состояние уже очищено — защита от повторных кликов
-    if not data:
-        await message.answer(
-            "Заявка уже принята ✅\n\nНажмите /start для новой заявки",
-            reply_markup=remove_kb()
-        )
-        return
-
     await state.clear()
     LEAD_COUNTER += 1
 
-    # ловим И контакт кнопкой, И текст
-    if message.contact:
-        contact_value = message.contact.phone_number
-    else:
-        contact_value = message.text
-
-    text = (
-        f"📥 *Новая заявка №{LEAD_COUNTER}*\n\n"
-        f"👤 Имя: {data['name']}\n"
-        f"📞 Контакт: {contact_value}\n"
-        f"🪪 Статус: {data['citizenship']}\n"
-        f"🗓 Срок: {data['term']}\n"
-        f"⏱ Срочность: {data['urgency']}\n"
-        f"👤 Telegram: @{message.from_user.username}"
+    contact_value = (
+        message.contact.phone_number
+        if message.contact
+        else message.text
     )
 
-    # админу
-    await message.bot.send_message(
-        ADMIN_ID,
-        text,
-        parse_mode="Markdown",
-        reply_markup=admin_lead_kb(LEAD_COUNTER)
-    )
-
-    # пользователю
+    # 1️⃣ СНАЧАЛА СООБЩЕНИЕ ПОЛЬЗОВАТЕЛЮ (ВСЕГДА)
     await message.answer(
         "✅ Заявка отправлена.\n\n"
         "Мы свяжемся с вами в ближайшее время.",
         reply_markup=remove_kb()
     )
+
+    # 2️⃣ ПОТОМ АДМИНУ (ДАЖЕ ЕСЛИ ТУТ ОШИБКА — ПОЛЬЗОВАТЕЛЬ УЖЕ ОТВЕТ ПОЛУЧИЛ)
+    try:
+        text = (
+            f"📥 *Новая заявка №{LEAD_COUNTER}*\n\n"
+            f"👤 Имя: {data['name']}\n"
+            f"📞 Контакт: {contact_value}\n"
+            f"🪪 Статус: {data['citizenship']}\n"
+            f"🗓 Срок: {data['term']}\n"
+            f"⏱ Срочность: {data['urgency']}\n"
+            f"👤 Telegram: @{message.from_user.username}"
+        )
+
+        await message.bot.send_message(
+            ADMIN_ID,
+            text,
+            parse_mode="Markdown",
+            reply_markup=admin_lead_kb(LEAD_COUNTER)
+        )
+    except Exception as e:
+        print("ADMIN SEND ERROR:", e)
