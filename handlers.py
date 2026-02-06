@@ -84,7 +84,11 @@ async def set_name(message: Message, state: FSMContext):
     )
 
 
-@router.message(RegForm.contact)
+# 🔴 КЛЮЧЕВОЙ ХЕНДЛЕР — ОБРАТИ ВНИМАНИЕ НА ФИЛЬТР
+@router.message(
+    RegForm.contact,
+    F.content_type.in_({"text", "contact"})
+)
 async def finish_contact(message: Message, state: FSMContext):
     global LEAD_COUNTER
 
@@ -100,21 +104,4 @@ async def finish_contact(message: Message, state: FSMContext):
     text = (
         f"📥 *Новая заявка №{LEAD_COUNTER}*\n\n"
         f"👤 Имя: {data['name']}\n"
-        f"📞 Контакт: {contact_value}\n"
-        f"🪪 Статус: {data['citizenship']}\n"
-        f"🗓 Срок: {data['term']}\n"
-        f"⏱ Срочность: {data['urgency']}\n"
-        f"👤 Telegram: @{message.from_user.username}"
-    )
-
-    await message.bot.send_message(
-        ADMIN_ID,
-        text,
-        parse_mode="Markdown",
-        reply_markup=admin_lead_kb(LEAD_COUNTER)
-    )
-
-    await message.answer(
-        "✅ Заявка отправлена.\n\nМы свяжемся с вами в ближайшее время.",
-        reply_markup=remove_kb()
-    )
+        f"📞 Контакт: {contact_val_
