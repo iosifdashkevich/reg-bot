@@ -19,6 +19,37 @@ async def start(message: Message):
         "Ответьте на пару вопросов — подберём вариант.",
         reply_markup=start_kb()
     )
+@router.message(RegForm.contact, F.contact)
+async def finish_contact(message: Message, state: FSMContext):
+    global LEAD_COUNTER
+    data = await state.get_data()
+    await state.clear()
+
+    LEAD_COUNTER += 1
+
+    phone = message.contact.phone_number
+
+    text = (
+        f"📥 *Новая заявка №{LEAD_COUNTER}*\n\n"
+        f"👤 Имя: {data['name']}\n"
+        f"📞 Контакт: {phone}\n"
+        f"🪪 Статус: {data['citizenship']}\n"
+        f"🗓 Срок: {data['term']}\n"
+        f"⏱ Срочность: {data['urgency']}\n"
+        f"👤 Telegram: @{message.from_user.username}"
+    )
+
+    await message.bot.send_message(
+        ADMIN_ID,
+        text,
+        parse_mode="Markdown",
+        reply_markup=admin_lead_kb(LEAD_COUNTER)
+    )
+
+    await message.answer(
+        "✅ Заявка отправлена.\n\n"
+        "Мы свяжемся с вами в ближайшее время."
+    )
 
 @router.callback_query(F.data == "start")
 async def start_form(cb: CallbackQuery, state: FSMContext):
