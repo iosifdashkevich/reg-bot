@@ -1,4 +1,25 @@
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import (
+    ReplyKeyboardMarkup,
+    KeyboardButton,
+    ReplyKeyboardRemove,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton
+)
+
+CHANNEL_URL = "https://t.me/propiska_v_moskve_1"
+
+
+def channel_kb():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="📢 Наш Telegram-канал",
+                    url=CHANNEL_URL
+                )
+            ]
+        ]
+    )
 
 
 def citizenship_kb():
@@ -47,7 +68,6 @@ def remove_kb():
     return ReplyKeyboardRemove()
 
 
-# 🔥 Админ-кнопки
 def admin_lead_kb(lead_id: int):
     return InlineKeyboardMarkup(
         inline_keyboard=[
