@@ -86,7 +86,8 @@ async def set_name(message: Message, state: FSMContext):
     await state.update_data(name=message.text)
     await state.set_state(RegForm.contact)
     await message.answer(
-        "Введите номер телефона ИЛИ нажмите «Поделиться контактом»"
+        "Введите номер телефона или нажмите кнопку ниже 👇",
+        reply_markup=contact_kb()
     )
 
 
