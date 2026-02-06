@@ -1,4 +1,4 @@
-from aiogram import Router, F
+from aiogram import Router
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 
@@ -18,7 +18,7 @@ LEAD_COUNTER = 0
 
 
 # ───────── START ─────────
-@router.message(F.text == "/start")
+@router.message(commands=["start"])
 async def start(message: Message, state: FSMContext):
     await state.clear()
     await state.set_state(RegForm.citizenship)
@@ -36,7 +36,6 @@ async def start(message: Message, state: FSMContext):
 async def set_cit(cb: CallbackQuery, state: FSMContext):
     await state.update_data(citizenship=cb.data)
     await state.set_state(RegForm.term)
-
     await cb.message.edit_text(
         "На какой срок нужна регистрация?",
         reply_markup=term_kb()
@@ -51,10 +50,8 @@ async def set_term(cb: CallbackQuery, state: FSMContext):
         "6m": "6 месяцев — 9 000 ₽",
         "12m": "12 месяцев — 12 000 ₽"
     }
-
     await state.update_data(term=prices.get(cb.data))
     await state.set_state(RegForm.urgency)
-
     await cb.message.edit_text(
         "Когда нужно оформить?",
         reply_markup=urgency_kb()
@@ -66,10 +63,7 @@ async def set_term(cb: CallbackQuery, state: FSMContext):
 async def set_urgency(cb: CallbackQuery, state: FSMContext):
     await state.update_data(urgency=cb.data)
     await state.set_state(RegForm.name)
-
-    await cb.message.edit_text(
-        "Введите ваше имя:"
-    )
+    await cb.message.edit_text("Введите ваше имя:")
 
 
 # ───────── NAME ─────────
@@ -77,37 +71,23 @@ async def set_urgency(cb: CallbackQuery, state: FSMContext):
 async def set_name(message: Message, state: FSMContext):
     await state.update_data(name=message.text)
     await state.set_state(RegForm.contact)
-
-    # ⬅️ ИСПРАВЛЕННЫЙ БЛОК (без пустых сообщений)
     await message.answer(
         "Введите номер телефона или нажмите кнопку ниже 👇",
         reply_markup=contact_kb()
     )
 
 
-# ───────── CONTACT (КНОПКА) ─────────
-@router.message(RegForm.contact, F.contact)
-async def finish_contact_by_button(message: Message, state: FSMContext):
-    await process_finish(message, state)
-
-
-# ───────── CONTACT (ТЕКСТ) ─────────
-@router.message(RegForm.contact, F.text)
-async def finish_contact_by_text(message: Message, state: FSMContext):
-    await process_finish(message, state)
-
-
-# ───────── ОБЩАЯ ЛОГИКА ─────────
-async def process_finish(message: Message, state: FSMContext):
+# ───────── CONTACT (ЕДИНСТВЕННЫЙ ХЕНДЛЕР) ─────────
+@router.message(RegForm.contact)
+async def finish_contact(message: Message, state: FSMContext):
     global LEAD_COUNTER
 
     data = await state.get_data()
 
-    # защита от повторного нажатия
+    # защита от повторных кликов
     if not data:
         await message.answer(
-            "Заявка уже принята ✅\n\n"
-            "Если нужно оформить ещё одну — нажмите /start",
+            "Заявка уже принята ✅\n\nНажмите /start для новой заявки",
             reply_markup=remove_kb()
         )
         return
@@ -115,11 +95,11 @@ async def process_finish(message: Message, state: FSMContext):
     await state.clear()
     LEAD_COUNTER += 1
 
-    contact_value = (
-        message.contact.phone_number
-        if message.contact
-        else message.text
-    )
+    # ЛОВИМ И КНОПКУ, И ТЕКСТ
+    if message.contact:
+        contact_value = message.contact.phone_number
+    else:
+        contact_value = message.text
 
     text = (
         f"📥 *Новая заявка №{LEAD_COUNTER}*\n\n"
@@ -131,7 +111,7 @@ async def process_finish(message: Message, state: FSMContext):
         f"👤 Telegram: @{message.from_user.username}"
     )
 
-    # сообщение админу
+    # админу
     await message.bot.send_message(
         ADMIN_ID,
         text,
@@ -139,7 +119,7 @@ async def process_finish(message: Message, state: FSMContext):
         reply_markup=admin_lead_kb(LEAD_COUNTER)
     )
 
-    # сообщение пользователю + убрать клавиатуру
+    # пользователю
     await message.answer(
         "✅ Заявка отправлена.\n\n"
         "Мы свяжемся с вами в ближайшее время.",
