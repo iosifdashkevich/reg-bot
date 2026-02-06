@@ -84,8 +84,8 @@ async def set_name(message: Message, state: FSMContext):
     )
 
 
-# ───────── CONTACT (TEXT / CONTACT) ─────────
-@router.message(RegForm.contact, F.content_type.in_({"text", "contact"}))
+# ───────── CONTACT (TEXT ИЛИ КНОПКА) ─────────
+@router.message(RegForm.contact, F.contact | F.text)
 async def finish_contact(message: Message, state: FSMContext):
     global LEAD_COUNTER
 
@@ -93,6 +93,7 @@ async def finish_contact(message: Message, state: FSMContext):
     await state.clear()
     LEAD_COUNTER += 1
 
+    # если пользователь нажал кнопку — contact, если ввёл руками — text
     contact_value = (
         message.contact.phone_number
         if message.contact
@@ -109,6 +110,7 @@ async def finish_contact(message: Message, state: FSMContext):
         f"👤 Telegram: @{message.from_user.username}"
     )
 
+    # сообщение админу
     await message.bot.send_message(
         ADMIN_ID,
         text,
@@ -116,6 +118,7 @@ async def finish_contact(message: Message, state: FSMContext):
         reply_markup=admin_lead_kb(LEAD_COUNTER)
     )
 
+    # сообщение пользователю + убрать клавиатуру
     await message.answer(
         "✅ Заявка отправлена.\n\n"
         "Мы свяжемся с вами в ближайшее время.",
