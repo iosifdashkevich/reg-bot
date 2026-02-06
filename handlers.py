@@ -100,7 +100,6 @@ async def finish_contact(message: Message, state: FSMContext):
     await state.clear()
     LEAD_COUNTER += 1
 
-    # универсальный контакт
     if message.contact:
         contact_value = message.contact.phone_number
     else:
@@ -125,5 +124,6 @@ async def finish_contact(message: Message, state: FSMContext):
 
     await message.answer(
         "✅ Заявка отправлена.\n\n"
-        "Мы свяжемся с вами в ближайшее время."
+        "Мы свяжемся с вами в ближайшее время.",
+        reply_markup=remove_kb()
     )
