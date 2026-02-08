@@ -13,6 +13,7 @@ from keyboards import (
     channel_kb
 )
 from config import ADMIN_ID
+from database import add_lead  # 🔥 НОВОЕ
 
 router = Router()
 LEAD_COUNTER = 0
@@ -23,7 +24,6 @@ async def start(message: Message, state: FSMContext):
     await state.clear()
     await state.set_state(RegForm.citizenship)
 
-    # 🔹 КНОПКА НА КАНАЛ (вариант 1)
     await message.answer(
         "📢 Перед началом рекомендуем ознакомиться с информацией "
         "в нашем Telegram-канале.\n"
@@ -103,7 +103,20 @@ async def finish(message: Message, state: FSMContext):
         else f"tg://user?id={message.from_user.id}"
     )
 
-    # ✅ СООБЩЕНИЕ КЛИЕНТУ — БЕЗ Markdown
+    # 🔥 СОХРАНЯЕМ В БАЗУ
+    lead_data = {
+        "name": data["name"],
+        "phone": contact,
+        "telegram_id": message.from_user.id,
+        "username": username,
+        "citizenship": data["citizenship"],
+        "term": data["term"],
+        "urgency": data["urgency"]
+    }
+
+    add_lead(lead_data)
+
+    # ✅ СООБЩЕНИЕ КЛИЕНТУ
     await message.answer(
         "✅ Заявка принята!\n\n"
         "Менеджер свяжется с вами в течение 5–15 минут.\n\n"
