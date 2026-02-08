@@ -198,3 +198,23 @@ async def all_leads(message: Message):
         )
 
     await message.answer(text)
+@router.message(F.text == "🆕 Новые заявки")
+async def new_leads(message: Message):
+    leads = get_new_leads()
+
+    if not leads:
+        await message.answer("Новых заявок нет")
+        return
+
+    text = "🆕 Новые заявки:\n\n"
+
+    for lead in leads:
+        text += (
+            f"№{lead[0]} | {lead[1]}\n"
+            f"Имя: {lead[2]}\n"
+            f"Телефон: {lead[3]}\n"
+            f"Username: {lead[4]}\n"
+            f"ID: {lead[5]}\n\n"
+        )
+
+    await message.answer(text)
