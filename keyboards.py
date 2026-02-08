@@ -91,4 +91,12 @@ def admin_menu_kb():
         ],
         resize_keyboard=True
     )
-    admin_menu_kb
+def admin_menu_kb():
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="📋 Все заявки")],
+            [KeyboardButton(text="📈 Сегодня")]
+        ],
+        resize_keyboard=True
+    )
+
