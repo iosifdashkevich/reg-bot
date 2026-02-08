@@ -10,14 +10,18 @@ from keyboards import (
     contact_kb,
     remove_kb,
     admin_lead_kb,
-    channel_kb
+    channel_kb,
+    admin_menu_kb
 )
 from config import ADMIN_ID
-from database import add_lead  # 🔥 НОВОЕ
+from database import add_lead, get_all_leads, get_today_stats
+
 
 router = Router()
 LEAD_COUNTER = 0
 
+
+# ================= START =================
 
 @router.message(F.text == "/start")
 async def start(message: Message, state: FSMContext):
@@ -36,6 +40,8 @@ async def start(message: Message, state: FSMContext):
         reply_markup=citizenship_kb()
     )
 
+
+# ================= FUNNEL =================
 
 @router.message(RegForm.citizenship)
 async def step_citizenship(message: Message, state: FSMContext):
@@ -83,6 +89,8 @@ async def step_name(message: Message, state: FSMContext):
     )
 
 
+# ================= FINISH =================
+
 @router.message(RegForm.contact)
 async def finish(message: Message, state: FSMContext):
     global LEAD_COUNTER
@@ -103,7 +111,7 @@ async def finish(message: Message, state: FSMContext):
         else f"tg://user?id={message.from_user.id}"
     )
 
-    # 🔥 СОХРАНЯЕМ В БАЗУ
+    # сохранить в базу
     lead_data = {
         "name": data["name"],
         "phone": contact,
@@ -116,7 +124,7 @@ async def finish(message: Message, state: FSMContext):
 
     add_lead(lead_data)
 
-    # ✅ СООБЩЕНИЕ КЛИЕНТУ
+    # сообщение клиенту
     await message.answer(
         "✅ Заявка принята!\n\n"
         "Менеджер свяжется с вами в течение 5–15 минут.\n\n"
@@ -125,7 +133,7 @@ async def finish(message: Message, state: FSMContext):
         reply_markup=remove_kb()
     )
 
-    # 📥 СООБЩЕНИЕ АДМИНУ
+    # сообщение админу
     admin_text = (
         f"📥 Новая заявка №{LEAD_COUNTER}\n\n"
         f"Имя: {data['name']}\n"
@@ -143,6 +151,8 @@ async def finish(message: Message, state: FSMContext):
     )
 
 
+# ================= CALLBACKS =================
+
 @router.callback_query(F.data.startswith("lead_work_"))
 async def lead_in_work(cb: CallbackQuery):
     await cb.message.edit_reply_markup()
@@ -155,3 +165,39 @@ async def lead_done(cb: CallbackQuery):
     await cb.message.edit_reply_markup()
     await cb.message.reply("✅ Статус заявки: Закрыта")
     await cb.answer()
+
+
+# ================= ADMIN PANEL =================
+
+@router.message(F.text == "/admin")
+async def admin_panel(message: Message):
+    await message.answer(
+        "📊 Панель управления",
+        reply_markup=admin_menu_kb()
+    )
+
+
+@router.message(F.text == "📋 Все заявки")
+async def all_leads(message: Message):
+    leads = get_all_leads()
+
+    if not leads:
+        await message.answer("Заявок нет")
+        return
+
+    text = "📋 Последние заявки:\n\n"
+
+    for lead in leads:
+        text += (
+            f"№{lead[0]} | {lead[1]}\n"
+            f"{lead[2]} | {lead[3]}\n"
+            f"Статус: {lead[4]}\n\n"
+        )
+
+    await message.answer(text)
+
+
+@router.message(F.text == "📈 Сегодня")
+async def today_stats(message: Message):
+    count = get_today_stats()
+    await message.answer(f"📈 Сегодня заявок: {count}")
