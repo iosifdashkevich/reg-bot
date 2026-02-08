@@ -61,13 +61,13 @@ def add_lead(data: dict):
 # 🔥 ДЛЯ АДМИНКИ
 # =====================================================
 
-# последние заявки
+# последние заявки (теперь с username и id)
 def get_all_leads(limit=20):
     conn = sqlite3.connect("leads.db")
     cursor = conn.cursor()
 
     cursor.execute("""
-    SELECT id, created_at, name, phone, status
+    SELECT id, created_at, name, phone, username, telegram_id, status
     FROM leads
     ORDER BY id DESC
     LIMIT ?
