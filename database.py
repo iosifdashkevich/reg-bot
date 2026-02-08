@@ -55,3 +55,37 @@ def add_lead(data: dict):
 
     conn.commit()
     conn.close()
+
+
+# 🔥 НОВОЕ — получить последние заявки
+def get_all_leads(limit=20):
+    conn = sqlite3.connect("leads.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT id, created_at, name, phone, status
+    FROM leads
+    ORDER BY id DESC
+    LIMIT ?
+    """, (limit,))
+
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+
+# 🔥 НОВОЕ — статистика за сегодня
+def get_today_stats():
+    conn = sqlite3.connect("leads.db")
+    cursor = conn.cursor()
+
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    cursor.execute("""
+    SELECT COUNT(*) FROM leads
+    WHERE created_at LIKE ?
+    """, (f"{today}%",))
+
+    count = cursor.fetchone()[0]
+    conn.close()
+    return count
