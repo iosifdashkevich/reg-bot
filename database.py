@@ -93,3 +93,20 @@ def get_today_stats():
     count = cursor.fetchone()[0]
     conn.close()
     return count
+# новые заявки
+def get_new_leads(limit=20):
+    conn = sqlite3.connect("leads.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT id, created_at, name, phone, username, telegram_id, status
+    FROM leads
+    WHERE status = 'new'
+    ORDER BY id DESC
+    LIMIT ?
+    """, (limit,))
+
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
