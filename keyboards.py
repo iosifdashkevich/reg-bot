@@ -36,9 +36,9 @@ def citizenship_kb():
 def term_kb():
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="3 месяца — 6000 ₽")],
-            [KeyboardButton(text="6 месяцев — 9000 ₽")],
-            [KeyboardButton(text="12 месяцев — 12000 ₽")]
+            [KeyboardButton(text="3 месяца — 8000 ₽")],
+            [KeyboardButton(text="6 месяцев — 11000 ₽")],
+            [KeyboardButton(text="12 месяцев — 15000 ₽")]
         ],
         resize_keyboard=True
     )
@@ -86,6 +86,7 @@ def admin_lead_kb(lead_id: int):
 def admin_menu_kb():
     return ReplyKeyboardMarkup(
         keyboard=[
+            [KeyboardButton(text="🆕 Новые заявки")],
             [KeyboardButton(text="📋 Все заявки")],
             [KeyboardButton(text="📈 Сегодня")]
         ],
