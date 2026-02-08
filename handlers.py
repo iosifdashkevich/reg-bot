@@ -14,7 +14,7 @@ from keyboards import (
     admin_menu_kb
 )
 from config import ADMIN_ID
-from database import add_lead, get_all_leads, get_today_stats
+from database import add_lead, get_all_leads, get_today_stats, get_new_leads
 
 
 router = Router()
@@ -198,6 +198,8 @@ async def all_leads(message: Message):
         )
 
     await message.answer(text)
+
+
 @router.message(F.text == "🆕 Новые заявки")
 async def new_leads(message: Message):
     leads = get_new_leads()
@@ -218,3 +220,9 @@ async def new_leads(message: Message):
         )
 
     await message.answer(text)
+
+
+@router.message(F.text == "📈 Сегодня")
+async def today_stats(message: Message):
+    count = get_today_stats()
+    await message.answer(f"📈 Сегодня заявок: {count}")
