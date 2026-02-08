@@ -190,14 +190,11 @@ async def all_leads(message: Message):
     for lead in leads:
         text += (
             f"№{lead[0]} | {lead[1]}\n"
-            f"{lead[2]} | {lead[3]}\n"
-            f"Статус: {lead[4]}\n\n"
+            f"Имя: {lead[2]}\n"
+            f"Телефон: {lead[3]}\n"
+            f"Username: {lead[4]}\n"
+            f"ID: {lead[5]}\n"
+            f"Статус: {lead[6]}\n\n"
         )
 
     await message.answer(text)
-
-
-@router.message(F.text == "📈 Сегодня")
-async def today_stats(message: Message):
-    count = get_today_stats()
-    await message.answer(f"📈 Сегодня заявок: {count}")
