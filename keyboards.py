@@ -91,3 +91,4 @@ def admin_menu_kb():
         ],
         resize_keyboard=True
     )
+    admin_menu_kb
