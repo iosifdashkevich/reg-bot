@@ -163,3 +163,21 @@ def update_lead_status(lead_id: int, status: str):
 
     conn.commit()
     conn.close()
+
+
+# ================= ВСЕ ПОЛЬЗОВАТЕЛИ =================
+
+def get_all_users():
+    conn = sqlite3.connect("leads.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT telegram_id, username, first_seen
+    FROM users
+    ORDER BY id DESC
+    LIMIT 30
+    """)
+
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
