@@ -9,6 +9,8 @@ from aiogram.types import (
 CHANNEL_URL = "https://t.me/propiska_v_moskve_1"
 
 
+# ================= КНОПКА КАНАЛА =================
+
 def channel_kb():
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -21,6 +23,8 @@ def channel_kb():
         ]
     )
 
+
+# ================= ВОРОНКА =================
 
 def citizenship_kb():
     return ReplyKeyboardMarkup(
@@ -36,9 +40,9 @@ def citizenship_kb():
 def term_kb():
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="3 месяца — 8000 ₽")],
-            [KeyboardButton(text="6 месяцев — 11000 ₽")],
-            [KeyboardButton(text="12 месяцев — 15000 ₽")]
+            [KeyboardButton(text="3 месяца — 6000 ₽")],
+            [KeyboardButton(text="6 месяцев — 9000 ₽")],
+            [KeyboardButton(text="12 месяцев — 12000 ₽")]
         ],
         resize_keyboard=True
     )
@@ -68,6 +72,8 @@ def remove_kb():
     return ReplyKeyboardRemove()
 
 
+# ================= КНОПКИ ДЛЯ ЗАЯВОК =================
+
 def admin_lead_kb(lead_id: int):
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -83,12 +89,17 @@ def admin_lead_kb(lead_id: int):
             ]
         ]
     )
+
+
+# ================= АДМИН МЕНЮ =================
+
 def admin_menu_kb():
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="🆕 Новые заявки")],
             [KeyboardButton(text="📋 Все заявки")],
-            [KeyboardButton(text="📈 Сегодня")]
+            [KeyboardButton(text="🆕 Новые заявки")],
+            [KeyboardButton(text="📈 Сегодня")],
+            [KeyboardButton(text="👥 Пользователи")]
         ],
         resize_keyboard=True
     )
