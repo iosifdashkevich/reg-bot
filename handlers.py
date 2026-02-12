@@ -20,7 +20,8 @@ from database import (
     get_today_stats,
     get_new_leads,
     update_lead_status,
-    add_user
+    add_user,
+    get_all_users
 )
 
 router = Router()
@@ -126,7 +127,6 @@ async def finish(message: Message, state: FSMContext):
         else f"tg://user?id={message.from_user.id}"
     )
 
-    # сохранить в базу
     lead_data = {
         "name": data["name"],
         "phone": contact,
@@ -139,7 +139,6 @@ async def finish(message: Message, state: FSMContext):
 
     add_lead(lead_data)
 
-    # сообщение клиенту
     await message.answer(
         "✅ Заявка принята!\n\n"
         "Менеджер свяжется с вами в течение 5–15 минут.\n\n"
@@ -148,7 +147,6 @@ async def finish(message: Message, state: FSMContext):
         reply_markup=remove_kb()
     )
 
-    # сообщение админу
     admin_text = (
         f"📥 Новая заявка №{LEAD_COUNTER}\n\n"
         f"Имя: {data['name']}\n"
@@ -171,7 +169,6 @@ async def finish(message: Message, state: FSMContext):
 @router.callback_query(F.data.startswith("lead_work_"))
 async def lead_in_work(cb: CallbackQuery):
     lead_id = int(cb.data.split("_")[-1])
-
     update_lead_status(lead_id, "in_work")
 
     await cb.message.edit_reply_markup()
@@ -182,7 +179,6 @@ async def lead_in_work(cb: CallbackQuery):
 @router.callback_query(F.data.startswith("lead_done_"))
 async def lead_done(cb: CallbackQuery):
     lead_id = int(cb.data.split("_")[-1])
-
     update_lead_status(lead_id, "done")
 
     await cb.message.edit_reply_markup()
@@ -240,6 +236,33 @@ async def new_leads(message: Message):
             f"Телефон: {lead[3]}\n"
             f"Username: {lead[4]}\n"
             f"ID: {lead[5]}\n\n"
+        )
+
+    await message.answer(text)
+
+
+# ================= ПОЛЬЗОВАТЕЛИ =================
+
+@router.message(F.text == "👥 Пользователи")
+async def users_list(message: Message):
+    users = get_all_users()
+
+    if not users:
+        await message.answer("Пользователей нет")
+        return
+
+    text = "👥 Последние пользователи:\n\n"
+
+    for user in users:
+        tg_id, username, date = user
+
+        if not username:
+            username = "нет"
+
+        text += (
+            f"{date}\n"
+            f"Username: {username}\n"
+            f"ID: {tg_id}\n\n"
         )
 
     await message.answer(text)
