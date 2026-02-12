@@ -2,10 +2,13 @@ import sqlite3
 from datetime import datetime
 
 
+# ================= СОЗДАНИЕ БАЗЫ =================
+
 def init_db():
     conn = sqlite3.connect("leads.db")
     cursor = conn.cursor()
 
+    # заявки
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS leads (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -21,9 +24,43 @@ def init_db():
     )
     """)
 
+    # пользователи (кто нажал старт)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        telegram_id INTEGER UNIQUE,
+        username TEXT,
+        first_seen TEXT
+    )
+    """)
+
     conn.commit()
     conn.close()
 
+
+# ================= ДОБАВИТЬ ПОЛЬЗОВАТЕЛЯ =================
+
+def add_user(telegram_id: int, username: str):
+    conn = sqlite3.connect("leads.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    INSERT OR IGNORE INTO users (
+        telegram_id,
+        username,
+        first_seen
+    ) VALUES (?, ?, ?)
+    """, (
+        telegram_id,
+        username,
+        datetime.now().strftime("%Y-%m-%d %H:%M")
+    ))
+
+    conn.commit()
+    conn.close()
+
+
+# ================= ДОБАВИТЬ ЗАЯВКУ =================
 
 def add_lead(data: dict):
     conn = sqlite3.connect("leads.db")
@@ -57,12 +94,9 @@ def add_lead(data: dict):
     conn.close()
 
 
-# =====================================================
-# 🔥 ДЛЯ АДМИНКИ
-# =====================================================
+# ================= ВСЕ ЗАЯВКИ =================
 
-# последние заявки (теперь с username и id)
-def get_all_leads(limit=20):
+def get_all_leads():
     conn = sqlite3.connect("leads.db")
     cursor = conn.cursor()
 
@@ -70,15 +104,34 @@ def get_all_leads(limit=20):
     SELECT id, created_at, name, phone, username, telegram_id, status
     FROM leads
     ORDER BY id DESC
-    LIMIT ?
-    """, (limit,))
+    LIMIT 20
+    """)
 
     rows = cursor.fetchall()
     conn.close()
     return rows
 
 
-# сколько заявок сегодня
+# ================= НОВЫЕ ЗАЯВКИ =================
+
+def get_new_leads():
+    conn = sqlite3.connect("leads.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT id, created_at, name, phone, username, telegram_id
+    FROM leads
+    WHERE status = 'new'
+    ORDER BY id DESC
+    """)
+
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+
+# ================= СТАТИСТИКА СЕГОДНЯ =================
+
 def get_today_stats():
     conn = sqlite3.connect("leads.db")
     cursor = conn.cursor()
@@ -86,27 +139,27 @@ def get_today_stats():
     today = datetime.now().strftime("%Y-%m-%d")
 
     cursor.execute("""
-    SELECT COUNT(*) FROM leads
+    SELECT COUNT(*)
+    FROM leads
     WHERE created_at LIKE ?
     """, (f"{today}%",))
 
     count = cursor.fetchone()[0]
     conn.close()
     return count
-# новые заявки
-def get_new_leads(limit=20):
+
+
+# ================= ИЗМЕНИТЬ СТАТУС =================
+
+def update_lead_status(lead_id: int, status: str):
     conn = sqlite3.connect("leads.db")
     cursor = conn.cursor()
 
     cursor.execute("""
-    SELECT id, created_at, name, phone, username, telegram_id, status
-    FROM leads
-    WHERE status = 'new'
-    ORDER BY id DESC
-    LIMIT ?
-    """, (limit,))
+    UPDATE leads
+    SET status = ?
+    WHERE id = ?
+    """, (status, lead_id))
 
-    rows = cursor.fetchall()
+    conn.commit()
     conn.close()
-    return rows
-
