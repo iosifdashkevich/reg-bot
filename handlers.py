@@ -111,7 +111,7 @@ async def step_name(message: Message, state: FSMContext):
 # ================= ФИНИШ =================
 
 
-        @router.message(RegForm.contact)
+@router.message(RegForm.contact)
 async def finish(message: Message, state: FSMContext):
     global LEAD_COUNTER
     LEAD_COUNTER += 1
