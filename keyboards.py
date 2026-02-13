@@ -40,10 +40,10 @@ def citizenship_kb():
 def term_kb():
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="1 месяц — 5000 ₽")],
+            KeyboardButton(text="1 месяц — 5000 ₽")],
             [KeyboardButton(text="3 месяца — 8000 ₽")],
-            [KeyboardButton(text="6 месяцев — 11000 ₽")],
-            [KeyboardButton(text="12 месяцев — 15000 ₽")]
+            [KeyboardButton(text="🔥 6 месяцев — 11000 ₽")],
+            [KeyboardButton(text="💎 12 месяцев — 15000 ₽")]
         ],
         resize_keyboard=True
     )
