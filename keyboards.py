@@ -9,7 +9,7 @@ from aiogram.types import (
 CHANNEL_URL = "https://t.me/propiska_v_moskve_1"
 
 
-# ================= КНОПКА КАНАЛА =================
+# ================= КАНАЛ =================
 
 def channel_kb():
     return InlineKeyboardMarkup(
@@ -24,7 +24,7 @@ def channel_kb():
     )
 
 
-# ================= ВОРОНКА =================
+# ================= ГРАЖДАНСТВО =================
 
 def citizenship_kb():
     return ReplyKeyboardMarkup(
@@ -37,10 +37,12 @@ def citizenship_kb():
     )
 
 
+# ================= СРОКИ (УСИЛЕННЫЕ) =================
+
 def term_kb():
     return ReplyKeyboardMarkup(
         keyboard=[
-            KeyboardButton(text="1 месяц — 5000 ₽")],
+            [KeyboardButton(text="1 месяц — 5000 ₽")],
             [KeyboardButton(text="3 месяца — 8000 ₽")],
             [KeyboardButton(text="🔥 6 месяцев — 11000 ₽")],
             [KeyboardButton(text="💎 12 месяцев — 15000 ₽")]
@@ -48,6 +50,8 @@ def term_kb():
         resize_keyboard=True
     )
 
+
+# ================= СРОЧНОСТЬ =================
 
 def urgency_kb():
     return ReplyKeyboardMarkup(
@@ -59,6 +63,8 @@ def urgency_kb():
         resize_keyboard=True
     )
 
+
+# ================= КОНТАКТ =================
 
 def contact_kb():
     return ReplyKeyboardMarkup(
@@ -73,7 +79,7 @@ def remove_kb():
     return ReplyKeyboardRemove()
 
 
-# ================= КНОПКИ ДЛЯ ЗАЯВОК =================
+# ================= КНОПКИ ДЛЯ АДМИНА =================
 
 def admin_lead_kb(lead_id: int):
     return InlineKeyboardMarkup(
@@ -92,14 +98,13 @@ def admin_lead_kb(lead_id: int):
     )
 
 
-# ================= АДМИН МЕНЮ =================
+# ================= МЕНЮ АДМИНА =================
 
 def admin_menu_kb():
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="📋 Все заявки")],
             [KeyboardButton(text="🆕 Новые заявки")],
-            [KeyboardButton(text="📈 Сегодня")],
             [KeyboardButton(text="👥 Пользователи")]
         ],
         resize_keyboard=True
