@@ -1,4 +1,5 @@
 import random
+import asyncio
 
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
@@ -14,8 +15,7 @@ from keyboards import (
     admin_lead_kb,
     channel_kb,
     admin_menu_kb,
-    consent_kb,
-    priority_confirm_kb
+    consent_kb
 )
 from config import ADMIN_ID
 from database import (
@@ -99,9 +99,7 @@ async def step_urgency(message: Message, state: FSMContext):
 async def step_consent(message: Message, state: FSMContext):
 
     if message.text == "❌ Не согласен":
-        await message.answer(
-            "Без согласия продолжение невозможно."
-        )
+        await message.answer("Без согласия продолжение невозможно.")
         return
 
     if message.text == "✅ Согласен":
@@ -158,17 +156,14 @@ async def finish(message: Message, state: FSMContext):
     client_number = random.randint(1342, 1489)
 
     await message.answer(
-    f"👑 Заявка зарегистрирована\n\n"
-    f"🧾 Номер обращения: {client_number}\n\n"
-    f"👤 За вами закреплён персональный специалист.\n"
-    f"Подготовка начинается.\n\n"
-    f"ℹ️ Важно:\n"
-    f"при отсутствии связи оформление может быть\n"
-    f"временно приостановлено.\n\n"
-    f"Ожидайте звонок или сообщение.",
-    reply_markup=remove_kb()
-)
+        f"👑 ЗАЯВКА ПРИНЯТА\n\n"
+        f"🧾 Номер обращения: {client_number}\n\n"
+        f"👤 За вами закреплён персональный менеджер.\n"
+        f"⏳ Ожидайте связь 5–15 минут.",
+        reply_markup=remove_kb()
+    )
 
+    # уведомление админу
     admin_text = (
         f"📥 Заявка №{lead_id}\n\n"
         f"Имя: {data.get('name')}\n"
@@ -185,26 +180,13 @@ async def finish(message: Message, state: FSMContext):
         reply_markup=admin_lead_kb(lead_id)
     )
 
+    # 🔥 ИМИТАЦИЯ НАЧАЛА РАБОТЫ
+    await asyncio.sleep(90)
 
-# ================= ПРИОРИТЕТ =================
-
-@router.callback_query(F.data == "priority_confirm")
-async def priority_confirm(cb: CallbackQuery):
-
-    await cb.message.edit_reply_markup(reply_markup=None)
-
-    await cb.message.answer(
-        "🚀 Отлично!\n"
-        "Ваш запрос отмечен как приоритетный.\n"
-        "Менеджер свяжется с вами первым."
+    await message.answer(
+        "📂 По вашему обращению уже начата предварительная подготовка.\n\n"
+        "Специалист скоро свяжется для уточнения деталей."
     )
-
-    await cb.bot.send_message(
-        ADMIN_ID,
-        "🔥 Клиент подтвердил готовность начать оформление!"
-    )
-
-    await cb.answer()
 
 
 # ================= СТАТУСЫ =================
@@ -324,8 +306,6 @@ async def new_leads(message: Message):
 
     await message.answer(text)
 
-
-# ================= ПОЛЬЗОВАТЕЛИ =================
 
 @router.message(F.text == "👥 Пользователи")
 async def users_list(message: Message):
