@@ -11,13 +11,13 @@ from keyboards import (
     remove_kb,
     admin_lead_kb,
     channel_kb,
-    admin_menu_kb
+    admin_menu_kb,
+    confirm_kb
 )
 from config import ADMIN_ID
 from database import (
     add_lead,
     get_all_leads,
-    get_today_stats,
     get_new_leads,
     update_lead_status,
     add_user,
@@ -33,7 +33,6 @@ LEAD_COUNTER = 0
 @router.message(F.text == "/start")
 async def start(message: Message, state: FSMContext):
 
-    # сохраняем пользователя
     username = (
         f"@{message.from_user.username}"
         if message.from_user.username
@@ -46,8 +45,7 @@ async def start(message: Message, state: FSMContext):
 
     await message.answer(
         "📢 Перед началом рекомендуем ознакомиться с информацией "
-        "в нашем Telegram-канале.\n"
-        "Там вы найдёте ответы на частые вопросы и условия сотрудничества.",
+        "в официальном канале компании.",
         reply_markup=channel_kb()
     )
 
@@ -61,15 +59,11 @@ async def start(message: Message, state: FSMContext):
 
 @router.message(RegForm.citizenship)
 async def step_citizenship(message: Message, state: FSMContext):
-    clean_status = message.text.split(" ", 1)[-1]
-    await state.update_data(citizenship=clean_status)
+    await state.update_data(citizenship=message.text)
 
     await state.set_state(RegForm.term)
     await message.answer(
-        "📊 Чаще всего клиенты выбирают регистрацию на 6 месяцев —\n"
-        "это самый удобный вариант по стоимости и сроку.\n\n"
-        "Если нужна долгосрочная уверенность — выбирают год.\n\n"
-        "Выберите подходящий вариант:",
+        "Выберите срок регистрации:",
         reply_markup=term_kb()
     )
 
@@ -80,7 +74,7 @@ async def step_term(message: Message, state: FSMContext):
 
     await state.set_state(RegForm.urgency)
     await message.answer(
-        "Когда нужно оформить?",
+        "Когда требуется оформление?",
         reply_markup=urgency_kb()
     )
 
@@ -101,15 +95,28 @@ async def step_name(message: Message, state: FSMContext):
     await state.update_data(name=message.text)
 
     await state.set_state(RegForm.contact)
+
     await message.answer(
-        "📞 Оставьте номер телефона или нажмите кнопку ниже.\n"
-        "Менеджер свяжется с вами в ближайшее время.",
-        reply_markup=contact_kb()
+        "📋 Перед передачей специалисту необходимо подтвердить готовность к оформлению.\n\n"
+        "Это позволяет нам работать быстрее и без ожиданий.\n\n"
+        "Нажмите кнопку ниже:",
+        reply_markup=confirm_kb()
     )
 
 
-# ================= ФИНИШ =================
+# ================= ПОДТВЕРЖДЕНИЕ =================
 
+@router.callback_query(F.data == "confirm_request")
+async def confirm_request(cb: CallbackQuery, state: FSMContext):
+    await cb.message.answer(
+        "⏳ Ваш запрос поставлен в очередь к менеджеру.\n\n"
+        "Пожалуйста, оставьте номер телефона:",
+        reply_markup=contact_kb()
+    )
+    await cb.answer()
+
+
+# ================= ФИНИШ =================
 
 @router.message(RegForm.contact)
 async def finish(message: Message, state: FSMContext):
@@ -128,76 +135,35 @@ async def finish(message: Message, state: FSMContext):
     username = (
         f"@{message.from_user.username}"
         if message.from_user.username
-        else f"tg://user?id={message.from_user.id}"
+        else f"id:{message.from_user.id}"
     )
 
     lead_data = {
-        "name": data["name"],
+        "name": data.get("name"),
         "phone": contact,
         "telegram_id": message.from_user.id,
         "username": username,
-        "citizenship": data["citizenship"],
-        "term": data["term"],
-        "urgency": data["urgency"]
+        "citizenship": data.get("citizenship"),
+        "term": data.get("term"),
+        "urgency": data.get("urgency")
     }
 
     add_lead(lead_data)
 
-    # сообщение клиенту
     await message.answer(
-    "⏳ Сейчас специалисты обрабатывают обращения.\n\n"
-    "Ваш запрос будет поставлен в очередь к персональному менеджеру.\n"
-    "Среднее время ожидания ответа: 5–15 минут.\n\n"
-    "Чтобы зафиксировать обращение, оставьте номер телефона:",
-    reply_markup=contact_kb()
-)
-
-
-    import asyncio
-
-    await asyncio.sleep(3)
-
-    await message.answer(
-        "🔒 Работаем официально.\n\n"
-        "Регистрация проходит онлайн.\n"
-        "Регистрация отобразится в вашем личном кабинете на гос услугах и на портале мос.ру."
+        "✅ Заявка зарегистрирована.\n\n"
+        "Менеджер свяжется с вами в течение 5–15 минут.",
+        reply_markup=remove_kb()
     )
 
-    await asyncio.sleep(4)
-
-    await message.answer(
-        "🤝 Никаких предоплат до консультации.\n\n"
-        "Сначала менеджер разберёт вашу ситуацию "
-        "и предложит подходящий вариант."
-    )
-
-    await asyncio.sleep(4)
-
-    await message.answer(
-        "📊 Чаще всего клиенты оформляют на 6 или 12 месяцев.\n\n"
-        "Так выгоднее по стоимости и не нужно "
-        "повторно заниматься продлением."
-    )
-
-    await asyncio.sleep(4)
-
-    await message.answer(
-        "☎️ Чтобы ускорить оформление, менеджер может уточнить:\n\n"
-        "• желаемый район\n"
-        "• гражданство\n"
-        "• когда нужна регистрация\n\n"
-        "Можно заранее подготовить информацию 👍"
-    )
-
-    # сообщение админу
     admin_text = (
         f"📥 Новая заявка №{LEAD_COUNTER}\n\n"
-        f"Имя: {data['name']}\n"
+        f"Имя: {data.get('name')}\n"
         f"Телефон: {contact}\n"
         f"Telegram: {username}\n\n"
-        f"Статус: {data['citizenship']}\n"
-        f"Срок: {data['term']}\n"
-        f"Срочность: {data['urgency']}"
+        f"Статус: {data.get('citizenship')}\n"
+        f"Срок: {data.get('term')}\n"
+        f"Срочность: {data.get('urgency')}"
     )
 
     await message.bot.send_message(
@@ -215,7 +181,7 @@ async def lead_in_work(cb: CallbackQuery):
     update_lead_status(lead_id, "in_work")
 
     await cb.message.edit_reply_markup()
-    await cb.message.reply("🟡 Статус заявки: В работе")
+    await cb.message.reply("🟡 В работе")
     await cb.answer()
 
 
@@ -225,14 +191,17 @@ async def lead_done(cb: CallbackQuery):
     update_lead_status(lead_id, "done")
 
     await cb.message.edit_reply_markup()
-    await cb.message.reply("✅ Статус заявки: Закрыта")
+    await cb.message.reply("✅ Завершена")
     await cb.answer()
 
 
-# ================= АДМИНКА =================
+# ================= АДМИН =================
 
 @router.message(F.text == "/admin")
 async def admin_panel(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+
     await message.answer(
         "📊 Панель управления",
         reply_markup=admin_menu_kb()
@@ -241,6 +210,9 @@ async def admin_panel(message: Message):
 
 @router.message(F.text == "📋 Все заявки")
 async def all_leads(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+
     leads = get_all_leads()
 
     if not leads:
@@ -264,6 +236,9 @@ async def all_leads(message: Message):
 
 @router.message(F.text == "🆕 Новые заявки")
 async def new_leads(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+
     leads = get_new_leads()
 
     if not leads:
@@ -288,17 +263,19 @@ async def new_leads(message: Message):
 
 @router.message(F.text == "👥 Пользователи")
 async def users_list(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+
     users = get_all_users()
 
     if not users:
         await message.answer("Пользователей нет")
         return
 
-    text = "👥 Последние пользователи:\n\n"
+    text = "👥 Пользователи:\n\n"
 
     for user in users:
         tg_id, username, date = user
-
         if not username:
             username = "нет"
 
