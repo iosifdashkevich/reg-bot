@@ -122,3 +122,11 @@ def confirm_kb():
             ]
         ]
     )
+def consent_kb():
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="✅ Согласен")],
+            [KeyboardButton(text="❌ Не согласен")]
+        ],
+        resize_keyboard=True
+    )
