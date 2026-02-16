@@ -199,60 +199,88 @@ async def finish(message: Message, state: FSMContext):
 
 @router.callback_query(F.data.startswith("lead_work_"))
 async def lead_in_work(cb: CallbackQuery):
-    lead_id = int(cb.data.replace("lead_work_", ""))
+    await cb.answer()
+
+    lead_raw = cb.data.replace("lead_work_", "")
+
+    if not lead_raw.isdigit():
+        await cb.message.answer("Ошибка номера заявки")
+        return
+
+    lead_id = int(lead_raw)
 
     update_lead_status(lead_id, "in_work")
 
+    # ищем клиента
     leads = get_all_leads()
     client_id = None
 
     for lead in leads:
         if lead[0] == lead_id:
-            client_id = lead[5]
+            client_id = lead[5]  # telegram_id
             break
 
+    # убираем кнопки
     await cb.message.edit_reply_markup(reply_markup=None)
+
+    # менеджеру
     await cb.message.answer(f"🟡 Заявка {lead_id} переведена в работу")
 
+    # клиенту
     if client_id:
         try:
             await cb.bot.send_message(
                 client_id,
-                "👤 Вашу заявку взял специалист.\nНачата подготовка оформления."
+                "👤 Ваше дело принято специалистом.\n\n"
+                "📂 Начата подготовка документов.\n"
+                "Сейчас проводится проверка данных для оформления.\n\n"
+                "💬 В ближайшее время сотрудник напишет вам здесь.\n\n"
+                "📌 Пожалуйста, оставайтесь на связи."
             )
-        except:
-            pass
-
-    await cb.answer()
+        except Exception as e:
+            print(f"Ошибка отправки клиенту: {e}")
 
 
 @router.callback_query(F.data.startswith("lead_done_"))
 async def lead_done(cb: CallbackQuery):
-    lead_id = int(cb.data.replace("lead_done_", ""))
+    await cb.answer()
+
+    lead_raw = cb.data.replace("lead_done_", "")
+
+    if not lead_raw.isdigit():
+        await cb.message.answer("Ошибка номера заявки")
+        return
+
+    lead_id = int(lead_raw)
 
     update_lead_status(lead_id, "done")
 
+    # ищем клиента
     leads = get_all_leads()
     client_id = None
 
     for lead in leads:
         if lead[0] == lead_id:
-            client_id = lead[5]
+            client_id = lead[5]  # telegram_id
             break
 
+    # убираем кнопки
     await cb.message.edit_reply_markup(reply_markup=None)
+
+    # менеджеру
     await cb.message.answer(f"✅ Заявка {lead_id} закрыта")
 
+    # клиенту
     if client_id:
         try:
             await cb.bot.send_message(
                 client_id,
-                "✅ Вопрос по вашей заявке решён.\nЕсли потребуется помощь — мы всегда на связи."
+                "✅ Работа по вашему обращению завершена.\n\n"
+                "Если потребуется помощь снова — будем рады помочь.\n"
+                "Спасибо за доверие!"
             )
-        except:
-            pass
-
-    await cb.answer()
+        except Exception as e:
+            print(f"Ошибка отправки клиенту: {e}")
 
 
 # ================= АДМИНКА =================
