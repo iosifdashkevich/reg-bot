@@ -45,8 +45,7 @@ async def start(message: Message, state: FSMContext):
     await state.set_state(RegForm.citizenship)
 
     await message.answer(
-        "📢 Перед началом рекомендуем ознакомиться с информацией "
-        "в нашем Telegram-канале.",
+        "📢 Перед началом рекомендуем ознакомиться с информацией в нашем Telegram-канале.",
         reply_markup=channel_kb()
     )
 
@@ -81,7 +80,7 @@ async def step_term(message: Message, state: FSMContext):
     )
 
 
-# ===== СОГЛАСИЕ =====
+# ================= СОГЛАСИЕ =================
 
 @router.message(RegForm.urgency)
 async def step_urgency(message: Message, state: FSMContext):
@@ -90,8 +89,7 @@ async def step_urgency(message: Message, state: FSMContext):
     await state.set_state(RegForm.consent)
     await message.answer(
         "📄 Для продолжения требуется согласие на обработку персональных данных.\n\n"
-        "Информация используется только для оформления регистрации "
-        "и связи с вами.",
+        "Информация используется только для оформления и связи с вами.",
         reply_markup=consent_kb()
     )
 
@@ -101,7 +99,7 @@ async def step_consent(message: Message, state: FSMContext):
 
     if message.text == "❌ Не согласен":
         await message.answer(
-            "Без согласия на обработку персональных данных продолжение невозможно."
+            "Без согласия продолжение невозможно."
         )
         return
 
@@ -124,7 +122,7 @@ async def step_name(message: Message, state: FSMContext):
     )
 
 
-# ================= VIP ФИНИШ =================
+# ================= ФИНИШ =================
 
 @router.message(RegForm.contact)
 async def finish(message: Message, state: FSMContext):
@@ -159,11 +157,10 @@ async def finish(message: Message, state: FSMContext):
     client_number = random.randint(1342, 1489)
 
     await message.answer(
-        f"👑 ВАША ЗАЯВКА ПРИНЯТЫ В РАБОТУ\n\n"
-        f"🧾 Номер Вашего обращения: {client_number}\n\n"
-        f"👤 За Вами закреплён персональный менеджер.\n"
-        f"📂 Подготовка уже начинается.\n\n"
-        f"⏳ Ожидайте связь в течение 5–15 минут.",
+        f"👑 ЗАЯВКА ПРИНЯТА\n\n"
+        f"🧾 Номер обращения: {client_number}\n\n"
+        f"👤 За вами закреплён персональный менеджер.\n"
+        f"⏳ Ожидайте связь 5–15 минут.",
         reply_markup=remove_kb()
     )
 
@@ -183,6 +180,7 @@ async def finish(message: Message, state: FSMContext):
         reply_markup=admin_lead_kb(lead_id)
     )
 
+
 # ================= СТАТУСЫ =================
 
 @router.callback_query(F.data.startswith("lead_work_"))
@@ -191,13 +189,12 @@ async def lead_in_work(cb: CallbackQuery):
 
     update_lead_status(lead_id, "in_work")
 
-    # ищем клиента
     leads = get_all_leads()
     client_id = None
 
     for lead in leads:
         if lead[0] == lead_id:
-            client_id = lead[4]  # ✅ ПРАВИЛЬНО
+            client_id = lead[5]
             break
 
     await cb.message.edit_reply_markup(reply_markup=None)
@@ -206,8 +203,7 @@ async def lead_in_work(cb: CallbackQuery):
     if client_id:
         await cb.bot.send_message(
             client_id,
-            "👤 Вашу заявку взял специалист.\n"
-            "Начата подготовка оформления."
+            "👤 Вашу заявку взял специалист. Начата подготовка."
         )
 
     await cb.answer()
@@ -224,7 +220,7 @@ async def lead_done(cb: CallbackQuery):
 
     for lead in leads:
         if lead[0] == lead_id:
-            client_id = lead[4]  # ✅ ПРАВИЛЬНО
+            client_id = lead[5]
             break
 
     await cb.message.edit_reply_markup(reply_markup=None)
@@ -233,13 +229,10 @@ async def lead_done(cb: CallbackQuery):
     if client_id:
         await cb.bot.send_message(
             client_id,
-            "✅ Вопрос по вашей заявке решён.\n"
-            "Если потребуется помощь — мы всегда на связи."
+            "✅ Вопрос по вашей заявке решён. Если потребуется помощь — мы на связи."
         )
 
     await cb.answer()
-
-
 
 
 # ================= АДМИНКА =================
@@ -312,6 +305,7 @@ async def users_list(message: Message):
 
     for user in users:
         tg_id, username, date = user
+
         if not username:
             username = "нет"
 
@@ -322,6 +316,3 @@ async def users_list(message: Message):
         )
 
     await message.answer(text)
-@router.callback_query()
-async def test_all_callbacks(cb: CallbackQuery):
-    await cb.answer("callback пойман")
