@@ -98,9 +98,7 @@ async def step_urgency(message: Message, state: FSMContext):
 async def step_consent(message: Message, state: FSMContext):
 
     if message.text == "❌ Не согласен":
-        await message.answer(
-            "Без согласия продолжение невозможно."
-        )
+        await message.answer("Без согласия продолжение невозможно.")
         return
 
     if message.text == "✅ Согласен":
@@ -180,6 +178,7 @@ async def finish(message: Message, state: FSMContext):
         reply_markup=admin_lead_kb(lead_id)
     )
 
+
 # ================= СТАТУСЫ =================
 
 @router.callback_query(F.data.startswith("lead_work_"))
@@ -193,7 +192,7 @@ async def lead_in_work(cb: CallbackQuery):
 
     for lead in leads:
         if lead[0] == lead_id:
-            client_id = lead[4]   # telegram_id
+            client_id = lead[4]
             break
 
     await cb.message.edit_reply_markup(reply_markup=None)
@@ -205,8 +204,8 @@ async def lead_in_work(cb: CallbackQuery):
                 client_id,
                 "👤 Вашу заявку взял специалист.\nНачата подготовка оформления."
             )
-        except Exception as e:
-            print(f"Ошибка отправки клиенту: {e}")
+        except:
+            pass
 
     await cb.answer()
 
@@ -222,7 +221,7 @@ async def lead_done(cb: CallbackQuery):
 
     for lead in leads:
         if lead[0] == lead_id:
-            client_id = lead[4]   # telegram_id
+            client_id = lead[4]
             break
 
     await cb.message.edit_reply_markup(reply_markup=None)
@@ -232,13 +231,12 @@ async def lead_done(cb: CallbackQuery):
         try:
             await cb.bot.send_message(
                 client_id,
-                "✅ Вопрос по вашей заявке решён.\nЕсли потребуется помощь — мы всегда на связи."
+                "✅ Вопрос по вашей заявке решён.\nЕсли потребуется помощь — мы на связи."
             )
-        except Exception as e:
-            print(f"Ошибка отправки клиенту: {e}")
+        except:
+            pass
 
     await cb.answer()
-
 
 
 # ================= АДМИНКА =================
@@ -311,7 +309,6 @@ async def users_list(message: Message):
 
     for user in users:
         tg_id, username, date = user
-
         if not username:
             username = "нет"
 
@@ -322,7 +319,3 @@ async def users_list(message: Message):
         )
 
     await message.answer(text)
-@router.callback_query()
-async def debug_callback(cb: CallbackQuery):
-    print("🔥 CALLBACK:", cb.data)
-    await cb.answer("нажатие получено")
