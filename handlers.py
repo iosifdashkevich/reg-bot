@@ -180,7 +180,6 @@ async def finish(message: Message, state: FSMContext):
         reply_markup=admin_lead_kb(lead_id)
     )
 
-
 # ================= СТАТУСЫ =================
 
 @router.callback_query(F.data.startswith("lead_work_"))
@@ -194,17 +193,20 @@ async def lead_in_work(cb: CallbackQuery):
 
     for lead in leads:
         if lead[0] == lead_id:
-            client_id = lead[5]
+            client_id = lead[4]   # telegram_id
             break
 
     await cb.message.edit_reply_markup(reply_markup=None)
     await cb.message.answer(f"🟡 Заявка {lead_id} переведена в работу")
 
     if client_id:
-        await cb.bot.send_message(
-            client_id,
-            "👤 Вашу заявку взял специалист. Начата подготовка."
-        )
+        try:
+            await cb.bot.send_message(
+                client_id,
+                "👤 Вашу заявку взял специалист.\nНачата подготовка оформления."
+            )
+        except Exception as e:
+            print(f"Ошибка отправки клиенту: {e}")
 
     await cb.answer()
 
@@ -220,19 +222,23 @@ async def lead_done(cb: CallbackQuery):
 
     for lead in leads:
         if lead[0] == lead_id:
-            client_id = lead[5]
+            client_id = lead[4]   # telegram_id
             break
 
     await cb.message.edit_reply_markup(reply_markup=None)
     await cb.message.answer(f"✅ Заявка {lead_id} закрыта")
 
     if client_id:
-        await cb.bot.send_message(
-            client_id,
-            "✅ Вопрос по вашей заявке решён. Если потребуется помощь — мы на связи."
-        )
+        try:
+            await cb.bot.send_message(
+                client_id,
+                "✅ Вопрос по вашей заявке решён.\nЕсли потребуется помощь — мы всегда на связи."
+            )
+        except Exception as e:
+            print(f"Ошибка отправки клиенту: {e}")
 
     await cb.answer()
+
 
 
 # ================= АДМИНКА =================
