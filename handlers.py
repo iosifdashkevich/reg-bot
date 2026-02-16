@@ -1,3 +1,5 @@
+import random
+
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
@@ -11,7 +13,8 @@ from keyboards import (
     remove_kb,
     admin_lead_kb,
     channel_kb,
-    admin_menu_kb
+    admin_menu_kb,
+    consent_kb
 )
 from config import ADMIN_ID
 from database import (
@@ -24,12 +27,9 @@ from database import (
 )
 
 router = Router()
-LEAD_COUNTER = 0
 
 
-# ==================================================
-# START
-# ==================================================
+# ================= START =================
 
 @router.message(F.text == "/start")
 async def start(message: Message, state: FSMContext):
@@ -46,8 +46,7 @@ async def start(message: Message, state: FSMContext):
 
     await message.answer(
         "📢 Перед началом рекомендуем ознакомиться с информацией "
-        "в нашем Telegram-канале.\n"
-        "Там вы найдёте ответы на частые вопросы и условия.",
+        "в нашем Telegram-канале.",
         reply_markup=channel_kb()
     )
 
@@ -57,13 +56,12 @@ async def start(message: Message, state: FSMContext):
     )
 
 
-# ==================================================
-# ВОРОНКА
-# ==================================================
+# ================= ВОРОНКА =================
 
 @router.message(RegForm.citizenship)
 async def step_citizenship(message: Message, state: FSMContext):
-    await state.update_data(citizenship=message.text)
+    clean_status = message.text.split(" ", 1)[-1]
+    await state.update_data(citizenship=clean_status)
 
     await state.set_state(RegForm.term)
     await message.answer(
@@ -83,15 +81,36 @@ async def step_term(message: Message, state: FSMContext):
     )
 
 
+# ===== СОГЛАСИЕ =====
+
 @router.message(RegForm.urgency)
 async def step_urgency(message: Message, state: FSMContext):
     await state.update_data(urgency=message.text)
 
-    await state.set_state(RegForm.name)
+    await state.set_state(RegForm.consent)
     await message.answer(
-        "Как к вам можно обращаться?",
-        reply_markup=remove_kb()
+        "📄 Для продолжения требуется согласие на обработку данных.\n\n"
+        "Информация используется только для оформления регистрации "
+        "и связи с вами.",
+        reply_markup=consent_kb()
     )
+
+
+@router.message(RegForm.consent)
+async def step_consent(message: Message, state: FSMContext):
+
+    if message.text == "❌ Не согласен":
+        await message.answer(
+            "Без согласия на обработку данных продолжение невозможно."
+        )
+        return
+
+    if message.text == "✅ Согласен":
+        await state.set_state(RegForm.name)
+        await message.answer(
+            "Как к вам можно обращаться?",
+            reply_markup=remove_kb()
+        )
 
 
 @router.message(RegForm.name)
@@ -100,18 +119,12 @@ async def step_name(message: Message, state: FSMContext):
 
     await state.set_state(RegForm.contact)
     await message.answer(
-        "📞 Оставьте номер телефона или нажмите кнопку ниже.\n"
-        "Менеджер свяжется с вами в ближайшее время.",
+        "📞 Оставьте номер телефона или нажмите кнопку ниже.",
         reply_markup=contact_kb()
     )
 
 
-# ==================================================
-# ФИНИШ
-# ==================================================
-
-import random
-
+# ================= VIP ФИНИШ =================
 
 @router.message(RegForm.contact)
 async def finish(message: Message, state: FSMContext):
@@ -141,25 +154,21 @@ async def finish(message: Message, state: FSMContext):
         "urgency": data.get("urgency")
     }
 
-    # сохраняем и получаем реальный ID
     lead_id = add_lead(lead_data)
 
-    # красивый маркетинговый номер
     client_number = random.randint(1342, 1489)
 
-    # 💎 ПОДТВЕРЖДЕНИЕ КЛИЕНТУ
     await message.answer(
-        f"✅ Заявка зарегистрирована в системе.\n\n"
+        f"👑 ВЫ ПРИНЯТЫ В РАБОТУ\n\n"
         f"🧾 Номер обращения: {client_number}\n\n"
-        f"📨 Данные переданы старшему специалисту.\n"
-        f"Подготовка к оформлению уже начинается.\n\n"
-        f"⏳ Среднее время ответа: 5–15 минут.",
+        f"👤 За вами закреплён персональный менеджер.\n"
+        f"📂 Подготовка уже начинается.\n\n"
+        f"⏳ Ожидайте связь в течение 5–15 минут.",
         reply_markup=remove_kb()
     )
 
-    # сообщение админу
     admin_text = (
-        f"📥 Новая заявка №{lead_id}\n\n"
+        f"📥 VIP заявка №{lead_id}\n\n"
         f"Имя: {data.get('name')}\n"
         f"Телефон: {contact}\n"
         f"Telegram: {username}\n\n"
@@ -175,9 +184,7 @@ async def finish(message: Message, state: FSMContext):
     )
 
 
-# ==================================================
-# СТАТУСЫ
-# ==================================================
+# ================= СТАТУСЫ =================
 
 @router.callback_query(F.data.startswith("lead_work_"))
 async def lead_in_work(cb: CallbackQuery):
@@ -185,7 +192,7 @@ async def lead_in_work(cb: CallbackQuery):
     update_lead_status(lead_id, "in_work")
 
     await cb.message.edit_reply_markup()
-    await cb.message.reply("🟡 Статус заявки: В работе")
+    await cb.message.reply("🟡 В работе")
     await cb.answer()
 
 
@@ -195,16 +202,17 @@ async def lead_done(cb: CallbackQuery):
     update_lead_status(lead_id, "done")
 
     await cb.message.edit_reply_markup()
-    await cb.message.reply("✅ Статус заявки: Закрыта")
+    await cb.message.reply("✅ Закрыта")
     await cb.answer()
 
 
-# ==================================================
-# АДМИНКА
-# ==================================================
+# ================= АДМИНКА =================
 
 @router.message(F.text == "/admin")
 async def admin_panel(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+
     await message.answer(
         "📊 Панель управления",
         reply_markup=admin_menu_kb()
@@ -256,10 +264,6 @@ async def new_leads(message: Message):
     await message.answer(text)
 
 
-# ==================================================
-# ПОЛЬЗОВАТЕЛИ
-# ==================================================
-
 @router.message(F.text == "👥 Пользователи")
 async def users_list(message: Message):
     users = get_all_users()
@@ -268,11 +272,10 @@ async def users_list(message: Message):
         await message.answer("Пользователей нет")
         return
 
-    text = "👥 Последние пользователи:\n\n"
+    text = "👥 Пользователи:\n\n"
 
     for user in users:
         tg_id, username, date = user
-
         if not username:
             username = "нет"
 
