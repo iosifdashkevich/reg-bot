@@ -16,7 +16,7 @@ def channel_kb():
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="📢 Наш Telegram-канал",
+                    text="🏛 Официальный информационный канал",
                     url=CHANNEL_URL
                 )
             ]
@@ -29,23 +29,23 @@ def channel_kb():
 def citizenship_kb():
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="🇷🇺 Гражданин РФ")],
-            [KeyboardButton(text="🌍 СНГ")],
-            [KeyboardButton(text="🇧🇾 Беларусь")]
+            [KeyboardButton(text="🇷🇺 Гражданин Российской Федерации")],
+            [KeyboardButton(text="🌍 Граждане СНГ")],
+            [KeyboardButton(text="🇧🇾 Республика Беларусь")]
         ],
         resize_keyboard=True
     )
 
 
-# ================= СРОКИ (УСИЛЕННЫЕ) =================
+# ================= ТАРИФЫ =================
 
 def term_kb():
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="1 месяц — 5000 ₽")],
-            [KeyboardButton(text="3 месяца — 8000 ₽")],
-            [KeyboardButton(text="🔥 6 месяцев — 11000 ₽")],
-            [KeyboardButton(text="💎 12 месяцев — 15000 ₽")]
+            [KeyboardButton(text="💼 1 месяц — 5 000 ₽")],
+            [KeyboardButton(text="⭐ 6 месяцев — 11 000 ₽ • рекомендуемый")],
+            [KeyboardButton(text="👑 12 месяцев — 15 000 ₽ • максимум защиты")],
+            [KeyboardButton(text="📄 3 месяца — 8 000 ₽")]
         ],
         resize_keyboard=True
     )
@@ -56,9 +56,9 @@ def term_kb():
 def urgency_kb():
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="Срочно")],
-            [KeyboardButton(text="В течение недели")],
-            [KeyboardButton(text="Не срочно")]
+            [KeyboardButton(text="🔥 Максимально срочно")],
+            [KeyboardButton(text="📅 В плановом режиме")],
+            [KeyboardButton(text="🕒 Без спешки")]
         ],
         resize_keyboard=True
     )
@@ -69,17 +69,19 @@ def urgency_kb():
 def contact_kb():
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="📞 Поделиться контактом", request_contact=True)]
+            [KeyboardButton(text="📲 Передать номер менеджеру", request_contact=True)]
         ],
         resize_keyboard=True
     )
 
 
+# ================= УБРАТЬ =================
+
 def remove_kb():
     return ReplyKeyboardRemove()
 
 
-# ================= КНОПКИ ДЛЯ АДМИНА =================
+# ================= ДЛЯ МЕНЕДЖЕРА =================
 
 def admin_lead_kb(lead_id: int):
     return InlineKeyboardMarkup(
@@ -90,7 +92,7 @@ def admin_lead_kb(lead_id: int):
                     callback_data=f"lead_work_{lead_id}"
                 ),
                 InlineKeyboardButton(
-                    text="✅ Закрыта",
+                    text="✅ Завершена",
                     callback_data=f"lead_done_{lead_id}"
                 )
             ]
@@ -98,7 +100,7 @@ def admin_lead_kb(lead_id: int):
     )
 
 
-# ================= МЕНЮ АДМИНА =================
+# ================= АДМИН =================
 
 def admin_menu_kb():
     return ReplyKeyboardMarkup(
