@@ -24,7 +24,7 @@ def init_db():
     )
     """)
 
-    # пользователи (кто нажал старт)
+    # пользователи
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -90,8 +90,12 @@ def add_lead(data: dict):
         "new"
     ))
 
+    lead_id = cursor.lastrowid  # 🔥 ВАЖНО
+
     conn.commit()
     conn.close()
+
+    return lead_id  # 🔥 ВОЗВРАЩАЕМ ID
 
 
 # ================= ВСЕ ЗАЯВКИ =================
@@ -128,25 +132,6 @@ def get_new_leads():
     rows = cursor.fetchall()
     conn.close()
     return rows
-
-
-# ================= СТАТИСТИКА СЕГОДНЯ =================
-
-def get_today_stats():
-    conn = sqlite3.connect("leads.db")
-    cursor = conn.cursor()
-
-    today = datetime.now().strftime("%Y-%m-%d")
-
-    cursor.execute("""
-    SELECT COUNT(*)
-    FROM leads
-    WHERE created_at LIKE ?
-    """, (f"{today}%",))
-
-    count = cursor.fetchone()[0]
-    conn.close()
-    return count
 
 
 # ================= ИЗМЕНИТЬ СТАТУС =================
