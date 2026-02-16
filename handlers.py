@@ -192,7 +192,7 @@ async def lead_in_work(cb: CallbackQuery):
 
     for lead in leads:
         if lead[0] == lead_id:
-            client_id = lead[5]   # ✅ telegram_id
+            client_id = lead[5]   # telegram_id
             break
 
     await cb.message.edit_reply_markup(reply_markup=None)
@@ -202,11 +202,10 @@ async def lead_in_work(cb: CallbackQuery):
         try:
             await cb.bot.send_message(
                 client_id,
-                "👤 Вашу заявку взял персональный специалист.\n"
-                "Начата подготовка документов."
+                "👤 Вашу заявку взял специалист.\nНачата подготовка оформления."
             )
-        except Exception as e:
-            print("Ошибка отправки клиенту:", e)
+        except:
+            pass
 
     await cb.answer()
 
@@ -222,7 +221,7 @@ async def lead_done(cb: CallbackQuery):
 
     for lead in leads:
         if lead[0] == lead_id:
-            client_id = lead[5]   # ✅ telegram_id
+            client_id = lead[5]   # telegram_id
             break
 
     await cb.message.edit_reply_markup(reply_markup=None)
@@ -232,14 +231,12 @@ async def lead_done(cb: CallbackQuery):
         try:
             await cb.bot.send_message(
                 client_id,
-                "✅ Ваша заявка успешно выполнена.\n"
-                "Благодарим за обращение."
+                "✅ Вопрос по вашей заявке решён.\nЕсли потребуется помощь — мы всегда на связи."
             )
-        except Exception as e:
-            print("Ошибка отправки клиенту:", e)
+        except:
+            pass
 
     await cb.answer()
-
 
 
 # ================= АДМИНКА =================
@@ -312,6 +309,7 @@ async def users_list(message: Message):
 
     for user in users:
         tg_id, username, date = user
+
         if not username:
             username = "нет"
 
