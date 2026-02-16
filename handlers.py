@@ -320,3 +320,7 @@ async def users_list(message: Message):
         )
 
     await message.answer(text)
+@router.callback_query()
+async def debug_any_callback(cb: CallbackQuery):
+    print("🔥 CALLBACK ПРИШЕЛ:", cb.data)
+    await cb.answer("вижу нажатие")
