@@ -322,3 +322,7 @@ async def users_list(message: Message):
         )
 
     await message.answer(text)
+@router.callback_query()
+async def debug_callback(cb: CallbackQuery):
+    print("🔥 CALLBACK:", cb.data)
+    await cb.answer("нажатие получено")
