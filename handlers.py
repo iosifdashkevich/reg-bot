@@ -110,10 +110,11 @@ async def step_name(message: Message, state: FSMContext):
 # ФИНИШ
 # ==================================================
 
+import random
+
+
 @router.message(RegForm.contact)
 async def finish(message: Message, state: FSMContext):
-
-    lead_number = random.randint(1342, 1489)
 
     data = await state.get_data()
     await state.clear()
@@ -140,20 +141,24 @@ async def finish(message: Message, state: FSMContext):
         "urgency": data.get("urgency")
     }
 
-    add_lead(lead_data)
+    # 👉 сохраняем в БД
+    lead_id = add_lead(lead_data)   # ВАЖНО: функция должна вернуть ID
 
-    # 💎 сообщение клиенту
+    # 👉 красивый номер для клиента
+    client_number = random.randint(1342, 1489)
+
+    # сообщение клиенту
     await message.answer(
-        f"✅ Обращение зарегистрировано в системе.\n\n"
-        f"🧾 Номер заявки: {lead_number}\n"
-        f"👤 Персональный специалист будет назначен автоматически.\n\n"
-        f"⏳ Среднее время ответа: 5–15 минут.",
+        f"✅ Обращение зарегистрировано.\n\n"
+        f"🧾 Номер заявки: {client_number}\n"
+        f"👤 Специалист скоро свяжется с вами.\n\n"
+        f"⏳ Обычно отвечаем за 5–15 минут.",
         reply_markup=remove_kb()
     )
 
-    # сообщение админу
+    # сообщение админу (реальный ID!)
     admin_text = (
-        f"📥 Новая заявка №{lead_number}\n\n"
+        f"📥 Новая заявка №{lead_id}\n\n"
         f"Имя: {data.get('name')}\n"
         f"Телефон: {contact}\n"
         f"Telegram: {username}\n\n"
@@ -165,7 +170,7 @@ async def finish(message: Message, state: FSMContext):
     await message.bot.send_message(
         ADMIN_ID,
         admin_text,
-        reply_markup=admin_lead_kb(lead_number)
+        reply_markup=admin_lead_kb(lead_id)
     )
 
 
