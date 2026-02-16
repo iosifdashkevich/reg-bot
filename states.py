@@ -1,8 +1,10 @@
 from aiogram.fsm.state import StatesGroup, State
 
+
 class RegForm(StatesGroup):
-    citizenship = State()
-    term = State()
-    urgency = State()
-    name = State()
-    contact = State()
+    citizenship = State()   # выбор гражданства
+    term = State()          # выбор срока
+    urgency = State()       # срочность
+    consent = State()       # согласие на обработку данных
+    name = State()          # имя клиента
+    contact = State()       # телефон / контакт
