@@ -89,7 +89,7 @@ async def step_urgency(message: Message, state: FSMContext):
 
     await state.set_state(RegForm.consent)
     await message.answer(
-        "📄 Для продолжения требуется согласие на обработку данных.\n\n"
+        "📄 Для продолжения требуется согласие на обработку персональных данных.\n\n"
         "Информация используется только для оформления регистрации "
         "и связи с вами.",
         reply_markup=consent_kb()
@@ -101,7 +101,7 @@ async def step_consent(message: Message, state: FSMContext):
 
     if message.text == "❌ Не согласен":
         await message.answer(
-            "Без согласия на обработку данных продолжение невозможно."
+            "Без согласия на обработку персональных данных продолжение невозможно."
         )
         return
 
@@ -159,16 +159,16 @@ async def finish(message: Message, state: FSMContext):
     client_number = random.randint(1342, 1489)
 
     await message.answer(
-        f"👑 ВЫ ПРИНЯТЫ В РАБОТУ\n\n"
-        f"🧾 Номер обращения: {client_number}\n\n"
-        f"👤 За вами закреплён персональный менеджер.\n"
+        f"👑 ВАША ЗАЯВКА ПРИНЯТЫ В РАБОТУ\n\n"
+        f"🧾 Номер Вашего обращения: {client_number}\n\n"
+        f"👤 За Вами закреплён персональный менеджер.\n"
         f"📂 Подготовка уже начинается.\n\n"
         f"⏳ Ожидайте связь в течение 5–15 минут.",
         reply_markup=remove_kb()
     )
 
     admin_text = (
-        f"📥 VIP заявка №{lead_id}\n\n"
+        f"📥 Заявка №{lead_id}\n\n"
         f"Имя: {data.get('name')}\n"
         f"Телефон: {contact}\n"
         f"Telegram: {username}\n\n"
@@ -183,9 +183,6 @@ async def finish(message: Message, state: FSMContext):
         reply_markup=admin_lead_kb(lead_id)
     )
 
-
-# ================= СТАТУСЫ =================
-
 # ================= СТАТУСЫ =================
 
 @router.callback_query(F.data.startswith("lead_work_"))
@@ -194,19 +191,18 @@ async def lead_in_work(cb: CallbackQuery):
 
     update_lead_status(lead_id, "in_work")
 
-    # достаём telegram id клиента
+    # ищем клиента
     leads = get_all_leads()
     client_id = None
 
     for lead in leads:
         if lead[0] == lead_id:
-            client_id = lead[5]  # колонка telegram_id
+            client_id = lead[4]  # ✅ ПРАВИЛЬНО
             break
 
     await cb.message.edit_reply_markup(reply_markup=None)
     await cb.message.answer(f"🟡 Заявка {lead_id} переведена в работу")
 
-    # уведомляем клиента
     if client_id:
         await cb.bot.send_message(
             client_id,
@@ -223,19 +219,17 @@ async def lead_done(cb: CallbackQuery):
 
     update_lead_status(lead_id, "done")
 
-    # достаём telegram id клиента
     leads = get_all_leads()
     client_id = None
 
     for lead in leads:
         if lead[0] == lead_id:
-            client_id = lead[5]
+            client_id = lead[4]  # ✅ ПРАВИЛЬНО
             break
 
     await cb.message.edit_reply_markup(reply_markup=None)
     await cb.message.answer(f"✅ Заявка {lead_id} закрыта")
 
-    # уведомляем клиента
     if client_id:
         await cb.bot.send_message(
             client_id,
@@ -244,6 +238,7 @@ async def lead_done(cb: CallbackQuery):
         )
 
     await cb.answer()
+
 
 
 
