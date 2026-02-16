@@ -11,8 +11,7 @@ from keyboards import (
     remove_kb,
     admin_lead_kb,
     channel_kb,
-    admin_menu_kb,
-    confirm_kb
+    admin_menu_kb
 )
 from config import ADMIN_ID
 from database import (
@@ -28,7 +27,9 @@ router = Router()
 LEAD_COUNTER = 0
 
 
-# ================= START =================
+# ==================================================
+# START
+# ==================================================
 
 @router.message(F.text == "/start")
 async def start(message: Message, state: FSMContext):
@@ -45,7 +46,8 @@ async def start(message: Message, state: FSMContext):
 
     await message.answer(
         "📢 Перед началом рекомендуем ознакомиться с информацией "
-        "в официальном канале компании.",
+        "в нашем Telegram-канале.\n"
+        "Там вы найдёте ответы на частые вопросы и условия.",
         reply_markup=channel_kb()
     )
 
@@ -55,7 +57,9 @@ async def start(message: Message, state: FSMContext):
     )
 
 
-# ================= ВОРОНКА =================
+# ==================================================
+# ВОРОНКА
+# ==================================================
 
 @router.message(RegForm.citizenship)
 async def step_citizenship(message: Message, state: FSMContext):
@@ -74,7 +78,7 @@ async def step_term(message: Message, state: FSMContext):
 
     await state.set_state(RegForm.urgency)
     await message.answer(
-        "Когда требуется оформление?",
+        "Когда нужно оформить?",
         reply_markup=urgency_kb()
     )
 
@@ -95,28 +99,16 @@ async def step_name(message: Message, state: FSMContext):
     await state.update_data(name=message.text)
 
     await state.set_state(RegForm.contact)
-
     await message.answer(
-        "📋 Перед передачей специалисту необходимо подтвердить готовность к оформлению.\n\n"
-        "Это позволяет нам работать быстрее и без ожиданий.\n\n"
-        "Нажмите кнопку ниже:",
-        reply_markup=confirm_kb()
-    )
-
-
-# ================= ПОДТВЕРЖДЕНИЕ =================
-
-@router.callback_query(F.data == "confirm_request")
-async def confirm_request(cb: CallbackQuery, state: FSMContext):
-    await cb.message.answer(
-        "⏳ Ваш запрос поставлен в очередь к менеджеру.\n\n"
-        "Пожалуйста, оставьте номер телефона:",
+        "📞 Оставьте номер телефона или нажмите кнопку ниже.\n"
+        "Менеджер свяжется с вами в ближайшее время.",
         reply_markup=contact_kb()
     )
-    await cb.answer()
 
 
-# ================= ФИНИШ =================
+# ==================================================
+# ФИНИШ
+# ==================================================
 
 @router.message(RegForm.contact)
 async def finish(message: Message, state: FSMContext):
@@ -150,12 +142,16 @@ async def finish(message: Message, state: FSMContext):
 
     add_lead(lead_data)
 
+    # 💎 мощное сообщение клиенту
     await message.answer(
-        "✅ Заявка зарегистрирована.\n\n"
-        "Менеджер свяжется с вами в течение 5–15 минут.",
+        f"✅ Обращение зарегистрировано в системе.\n\n"
+        f"🧾 Номер заявки: {LEAD_COUNTER}\n"
+        f"👤 Персональный специалист будет назначен автоматически.\n\n"
+        f"⏳ Среднее время ответа: 5–15 минут.",
         reply_markup=remove_kb()
     )
 
+    # сообщение админу
     admin_text = (
         f"📥 Новая заявка №{LEAD_COUNTER}\n\n"
         f"Имя: {data.get('name')}\n"
@@ -173,7 +169,9 @@ async def finish(message: Message, state: FSMContext):
     )
 
 
-# ================= СТАТУСЫ =================
+# ==================================================
+# СТАТУСЫ
+# ==================================================
 
 @router.callback_query(F.data.startswith("lead_work_"))
 async def lead_in_work(cb: CallbackQuery):
@@ -181,7 +179,7 @@ async def lead_in_work(cb: CallbackQuery):
     update_lead_status(lead_id, "in_work")
 
     await cb.message.edit_reply_markup()
-    await cb.message.reply("🟡 В работе")
+    await cb.message.reply("🟡 Статус заявки: В работе")
     await cb.answer()
 
 
@@ -191,17 +189,16 @@ async def lead_done(cb: CallbackQuery):
     update_lead_status(lead_id, "done")
 
     await cb.message.edit_reply_markup()
-    await cb.message.reply("✅ Завершена")
+    await cb.message.reply("✅ Статус заявки: Закрыта")
     await cb.answer()
 
 
-# ================= АДМИН =================
+# ==================================================
+# АДМИНКА
+# ==================================================
 
 @router.message(F.text == "/admin")
 async def admin_panel(message: Message):
-    if message.from_user.id != ADMIN_ID:
-        return
-
     await message.answer(
         "📊 Панель управления",
         reply_markup=admin_menu_kb()
@@ -210,9 +207,6 @@ async def admin_panel(message: Message):
 
 @router.message(F.text == "📋 Все заявки")
 async def all_leads(message: Message):
-    if message.from_user.id != ADMIN_ID:
-        return
-
     leads = get_all_leads()
 
     if not leads:
@@ -236,9 +230,6 @@ async def all_leads(message: Message):
 
 @router.message(F.text == "🆕 Новые заявки")
 async def new_leads(message: Message):
-    if message.from_user.id != ADMIN_ID:
-        return
-
     leads = get_new_leads()
 
     if not leads:
@@ -259,23 +250,23 @@ async def new_leads(message: Message):
     await message.answer(text)
 
 
-# ================= ПОЛЬЗОВАТЕЛИ =================
+# ==================================================
+# ПОЛЬЗОВАТЕЛИ
+# ==================================================
 
 @router.message(F.text == "👥 Пользователи")
 async def users_list(message: Message):
-    if message.from_user.id != ADMIN_ID:
-        return
-
     users = get_all_users()
 
     if not users:
         await message.answer("Пользователей нет")
         return
 
-    text = "👥 Пользователи:\n\n"
+    text = "👥 Последние пользователи:\n\n"
 
     for user in users:
         tg_id, username, date = user
+
         if not username:
             username = "нет"
 
