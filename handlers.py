@@ -186,24 +186,65 @@ async def finish(message: Message, state: FSMContext):
 
 # ================= СТАТУСЫ =================
 
+# ================= СТАТУСЫ =================
+
 @router.callback_query(F.data.startswith("lead_work_"))
 async def lead_in_work(cb: CallbackQuery):
-    lead_id = int(cb.data.split("_")[-1])
+    lead_id = int(cb.data.replace("lead_work_", ""))
+
     update_lead_status(lead_id, "in_work")
 
-    await cb.message.edit_reply_markup()
-    await cb.message.reply("🟡 В работе")
+    # достаём telegram id клиента
+    leads = get_all_leads()
+    client_id = None
+
+    for lead in leads:
+        if lead[0] == lead_id:
+            client_id = lead[5]  # колонка telegram_id
+            break
+
+    await cb.message.edit_reply_markup(reply_markup=None)
+    await cb.message.answer(f"🟡 Заявка {lead_id} переведена в работу")
+
+    # уведомляем клиента
+    if client_id:
+        await cb.bot.send_message(
+            client_id,
+            "👤 Вашу заявку взял специалист.\n"
+            "Начата подготовка оформления."
+        )
+
     await cb.answer()
 
 
 @router.callback_query(F.data.startswith("lead_done_"))
 async def lead_done(cb: CallbackQuery):
-    lead_id = int(cb.data.split("_")[-1])
+    lead_id = int(cb.data.replace("lead_done_", ""))
+
     update_lead_status(lead_id, "done")
 
-    await cb.message.edit_reply_markup()
-    await cb.message.reply("✅ Закрыта")
+    # достаём telegram id клиента
+    leads = get_all_leads()
+    client_id = None
+
+    for lead in leads:
+        if lead[0] == lead_id:
+            client_id = lead[5]
+            break
+
+    await cb.message.edit_reply_markup(reply_markup=None)
+    await cb.message.answer(f"✅ Заявка {lead_id} закрыта")
+
+    # уведомляем клиента
+    if client_id:
+        await cb.bot.send_message(
+            client_id,
+            "✅ Вопрос по вашей заявке решён.\n"
+            "Если потребуется помощь — мы всегда на связи."
+        )
+
     await cb.answer()
+
 
 
 # ================= АДМИНКА =================
