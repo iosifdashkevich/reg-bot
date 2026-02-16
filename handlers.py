@@ -183,7 +183,16 @@ async def finish(message: Message, state: FSMContext):
 
 @router.callback_query(F.data.startswith("lead_work_"))
 async def lead_in_work(cb: CallbackQuery):
-    lead_id = int(cb.data.replace("lead_work_", ""))
+
+    if not cb.data:
+        await cb.answer("Ошибка данных")
+        return
+
+    try:
+        lead_id = int(cb.data.replace("lead_work_", ""))
+    except:
+        await cb.answer("Ошибка номера")
+        return
 
     update_lead_status(lead_id, "in_work")
 
@@ -192,7 +201,7 @@ async def lead_in_work(cb: CallbackQuery):
 
     for lead in leads:
         if lead[0] == lead_id:
-            client_id = lead[5]   # telegram_id
+            client_id = lead[5]
             break
 
     await cb.message.edit_reply_markup(reply_markup=None)
@@ -202,17 +211,27 @@ async def lead_in_work(cb: CallbackQuery):
         try:
             await cb.bot.send_message(
                 client_id,
-                "👤 Вашу заявку взял специалист.\nНачата подготовка оформления."
+                "👤 Вашу заявку взял персональный менеджер.\n"
+                "Начата подготовка."
             )
-        except:
-            pass
+        except Exception as e:
+            print("Ошибка отправки клиенту:", e)
 
     await cb.answer()
 
 
 @router.callback_query(F.data.startswith("lead_done_"))
 async def lead_done(cb: CallbackQuery):
-    lead_id = int(cb.data.replace("lead_done_", ""))
+
+    if not cb.data:
+        await cb.answer("Ошибка данных")
+        return
+
+    try:
+        lead_id = int(cb.data.replace("lead_done_", ""))
+    except:
+        await cb.answer("Ошибка номера")
+        return
 
     update_lead_status(lead_id, "done")
 
@@ -221,7 +240,7 @@ async def lead_done(cb: CallbackQuery):
 
     for lead in leads:
         if lead[0] == lead_id:
-            client_id = lead[5]   # telegram_id
+            client_id = lead[5]
             break
 
     await cb.message.edit_reply_markup(reply_markup=None)
@@ -231,12 +250,14 @@ async def lead_done(cb: CallbackQuery):
         try:
             await cb.bot.send_message(
                 client_id,
-                "✅ Вопрос по вашей заявке решён.\nЕсли потребуется помощь — мы всегда на связи."
+                "✅ Ваша заявка выполнена.\n"
+                "Спасибо за обращение."
             )
-        except:
-            pass
+        except Exception as e:
+            print("Ошибка отправки клиенту:", e)
 
     await cb.answer()
+
 
 
 # ================= АДМИНКА =================
