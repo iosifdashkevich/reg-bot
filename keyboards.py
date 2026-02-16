@@ -111,3 +111,14 @@ def admin_menu_kb():
         ],
         resize_keyboard=True
     )
+def confirm_kb():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="✅ Подтвердить обращение",
+                    callback_data="confirm_request"
+                )
+            ]
+        ]
+    )
