@@ -169,8 +169,6 @@ async def finish(message: Message, state: FSMContext):
     reply_markup=remove_kb()
 )
 
-    )
-
     admin_text = (
         f"📥 Заявка №{lead_id}\n\n"
         f"Имя: {data.get('name')}\n"
