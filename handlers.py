@@ -322,3 +322,6 @@ async def users_list(message: Message):
         )
 
     await message.answer(text)
+@router.callback_query()
+async def test_all_callbacks(cb: CallbackQuery):
+    await cb.answer("callback пойман")
