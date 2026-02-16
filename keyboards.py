@@ -130,3 +130,16 @@ def consent_kb():
         ],
         resize_keyboard=True
     )
+# ================= ПРИОРИТЕТНОЕ ПОДТВЕРЖДЕНИЕ =================
+
+def priority_confirm_kb():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🚀 Готов начать оформление",
+                    callback_data="priority_confirm"
+                )
+            ]
+        ]
+    )
