@@ -363,3 +363,47 @@ async def users_list(message: Message):
         )
 
     await message.answer(text)
+from aiogram.filters import Command
+import asyncio
+
+
+# ================= РАССЫЛКА =================
+
+@router.message(Command("broadcast"))
+async def broadcast_handler(message: Message):
+    # доступ только админу
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    text = message.text.replace("/broadcast", "").strip()
+
+    if not text:
+        await message.answer(
+            "Введите текст после команды.\n\n"
+            "Пример:\n"
+            "/broadcast 📢 Текст сообщения"
+        )
+        return
+
+    users = get_all_users()
+
+    sent = 0
+    failed = 0
+
+    await message.answer("🚀 Запускаю рассылку...")
+
+    for user in users:
+        tg_id = user[0]  # telegram_id
+
+        try:
+            await message.bot.send_message(tg_id, text)
+            sent += 1
+            await asyncio.sleep(0.05)  # защита от FloodWait
+        except:
+            failed += 1
+
+    await message.answer(
+        f"📊 Рассылка завершена\n\n"
+        f"✅ Отправлено: {sent}\n"
+        f"❌ Ошибок: {failed}"
+    )
