@@ -2,12 +2,18 @@ import random
 import asyncio
 
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import (
+    Message,
+    CallbackQuery,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton
+)
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import Command
 from aiogram.exceptions import TelegramRetryAfter
 
-from states import RegForm
+from states import RegForm, AdminReply
+
 from keyboards import (
     citizenship_kb,
     term_kb,
@@ -21,6 +27,7 @@ from keyboards import (
 )
 
 from config import ADMIN_ID
+
 from database import (
     add_lead,
     get_all_leads,
@@ -45,7 +52,7 @@ async def start(message: Message, state: FSMContext):
     await state.set_state(RegForm.citizenship)
 
     await message.answer(
-        "📢 Перед началом рекомендуем ознакомиться с информацией в нашем Telegram-канале.",
+        "📢 Ознакомьтесь с информацией в нашем Telegram-канале.",
         reply_markup=channel_kb()
     )
 
@@ -76,7 +83,7 @@ async def step_urgency(message: Message, state: FSMContext):
     await state.update_data(urgency=message.text)
     await state.set_state(RegForm.consent)
     await message.answer(
-        "📄 Для продолжения требуется согласие на обработку персональных данных.",
+        "📄 Требуется согласие на обработку персональных данных.",
         reply_markup=consent_kb()
     )
 
@@ -203,39 +210,69 @@ async def admin_panel(message: Message):
     )
 
 
-@router.message(F.text == "📋 Все заявки")
-async def all_leads(message: Message):
-    leads = get_all_leads()
-    if not leads:
-        await message.answer("Заявок нет")
-        return
-
-    text = "📋 Последние заявки:\n\n"
-    for lead in leads:
-        text += (
-            f"№{lead[0]} | {lead[1]}\n"
-            f"{lead[2]} | {lead[3]}\n"
-            f"Статус: {lead[6]}\n\n"
-        )
-
-    await message.answer(text)
-
-
 @router.message(F.text == "👥 Пользователи")
 async def users_list(message: Message):
     users = get_last_users()
+
     if not users:
         await message.answer("Пользователей нет")
         return
 
-    text = "👥 Последние 5 пользователей:\n\n"
     for user in users:
-        text += f"{user[2]}\nID: {user[0]}\n\n"
+        telegram_id = user[0]
+        username = user[1]
+        first_seen = user[2]
 
-    await message.answer(text)
+        profile_link = f'<a href="tg://user?id={telegram_id}">{telegram_id}</a>'
+
+        text = (
+            f"📅 {first_seen}\n"
+            f"👤 Username: {username if username else 'нет'}\n"
+            f"🆔 ID: {profile_link}"
+        )
+
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="✍ Ответить",
+                        callback_data=f"reply_{telegram_id}"
+                    )
+                ]
+            ]
+        )
+
+        await message.answer(text, parse_mode="HTML", reply_markup=keyboard)
 
 
-# ================= РАССЫЛКА 20k+ =================
+# ================= ОТВЕТ АДМИНА =================
+
+@router.callback_query(F.data.startswith("reply_"))
+async def reply_start(cb: CallbackQuery, state: FSMContext):
+    await cb.answer()
+    user_id = int(cb.data.replace("reply_", ""))
+
+    await state.update_data(reply_user_id=user_id)
+    await state.set_state(AdminReply.waiting_for_message)
+
+    await cb.message.answer("✍ Введите сообщение для пользователя:")
+
+
+@router.message(AdminReply.waiting_for_message)
+async def send_reply(message: Message, state: FSMContext):
+    data = await state.get_data()
+    user_id = data.get("reply_user_id")
+
+    try:
+        await message.bot.send_message(user_id, message.text)
+        await message.answer("✅ Сообщение отправлено пользователю.")
+    except:
+        await message.answer("❌ Ошибка отправки.")
+
+    await state.clear()
+
+
+# ================= РАССЫЛКА =================
 
 @router.message(Command("broadcast"))
 async def broadcast_handler(message: Message):
