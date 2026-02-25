@@ -29,12 +29,11 @@ from database import (
     get_all_leads,
     update_lead_status,
     add_user,
-    get_all_users_full,
-    get_last_users,
-    get_users_count
+    get_all_users_full
 )
 
 router = Router()
+
 
 # =====================================================
 # START
@@ -49,7 +48,7 @@ async def start(message: Message, state: FSMContext):
     await state.set_state(RegForm.citizenship)
 
     await message.answer(
-        "Ознакомьтесь с информацией в нашем Telegram-канале.",
+        "📢 Ознакомьтесь с информацией в нашем Telegram-канале.",
         reply_markup=channel_kb()
     )
     await message.answer("Выберите ваш статус:", reply_markup=citizenship_kb())
@@ -78,7 +77,7 @@ async def step_urgency(message: Message, state: FSMContext):
     await state.update_data(urgency=message.text)
     await state.set_state(RegForm.consent)
     await message.answer(
-        "Требуется согласие на обработку персональных данных.",
+        "📄 Требуется согласие на обработку персональных данных.",
         reply_markup=consent_kb()
     )
 
@@ -97,11 +96,11 @@ async def step_consent(message: Message, state: FSMContext):
 async def step_name(message: Message, state: FSMContext):
     await state.update_data(name=message.text)
     await state.set_state(RegForm.contact)
-    await message.answer("Оставьте номер телефона:", reply_markup=contact_kb())
+    await message.answer("📞 Оставьте номер телефона:", reply_markup=contact_kb())
 
 
 # =====================================================
-# ФИНИШ
+# СОЗДАНИЕ ЗАЯВКИ
 # =====================================================
 
 @router.message(RegForm.contact)
@@ -111,7 +110,7 @@ async def finish(message: Message, state: FSMContext):
     await state.clear()
 
     contact = message.contact.phone_number if message.contact else message.text
-    username = f"@{message.from_user.username}" if message.from_user.username else f"id:{message.from_user.id}"
+    username = f"@{message.from_user.username}" if message.from_user.username else "без username"
 
     lead_id = add_lead({
         "name": data.get("name"),
@@ -123,84 +122,50 @@ async def finish(message: Message, state: FSMContext):
         "urgency": data.get("urgency")
     })
 
+    case_number = random.randint(1000, 9999)
+
+    # КЛИЕНТУ
     await message.answer(
-        f"Обращение зарегистрировано.\n\n"
-        f"Номер дела: {random.randint(1000, 9999)}\n\n"
-        f"Специалист подключится в течение 5–15 минут.",
+        f"🏛 <b>Обращение зарегистрировано</b>\n\n"
+        f"🧾 Номер дела: <b>{case_number}</b>\n\n"
+        f"⏳ Специалист подключится в течение 5–15 минут.",
+        parse_mode="HTML",
         reply_markup=remove_kb()
+    )
+
+    # АДМИНУ
+    admin_text = (
+        f"📥 <b>Новая заявка №{lead_id}</b>\n\n"
+        f"👤 {data.get('name')}\n"
+        f"📞 {contact}\n"
+        f"🆔 {message.from_user.id}\n"
+        f"🔗 {username}\n\n"
+        f"Статус: new"
+    )
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="🟡 В работу", callback_data=f"inwork:{lead_id}"),
+                InlineKeyboardButton(text="✅ Закрыть", callback_data=f"done:{lead_id}")
+            ],
+            [
+                InlineKeyboardButton(text="✍ Ответить", callback_data=f"reply:{message.from_user.id}")
+            ]
+        ]
     )
 
     await message.bot.send_message(
         ADMIN_ID,
-        f"Новая заявка №{lead_id}"
+        admin_text,
+        parse_mode="HTML",
+        reply_markup=keyboard
     )
 
 
 # =====================================================
-# DASHBOARD
+# СТАТУСЫ
 # =====================================================
-
-@router.message(Command("admin"))
-async def admin_panel(message: Message):
-    if message.from_user.id != ADMIN_ID:
-        return
-    await send_dashboard(message)
-
-
-async def send_dashboard(message: Message, edit=False):
-
-    total_users = get_users_count()
-    users = get_last_users()
-    leads = get_all_leads()
-
-    text = f"<b>Панель управления</b>\n\n"
-    text += f"Пользователей: {total_users}\n\n"
-
-    text += "<b>Последние пользователи:</b>\n"
-    keyboard = []
-
-    for telegram_id, username, first_seen in users:
-        display = username if username else "Без username"
-        text += f"{first_seen} | {display}\n"
-
-        keyboard.append([
-            InlineKeyboardButton(text="↗", callback_data=f"reply:{telegram_id}")
-        ])
-
-    text += "\n<b>Последние заявки:</b>\n"
-
-    for lead in leads[:5]:
-        lead_id = lead[0]
-        status = lead[6]
-
-        text += f"№{lead_id} | {status}\n"
-
-        keyboard.append([
-            InlineKeyboardButton(text="🟡", callback_data=f"inwork:{lead_id}"),
-            InlineKeyboardButton(text="✅", callback_data=f"done:{lead_id}")
-        ])
-
-    keyboard.append([
-        InlineKeyboardButton(text="🔄 Обновить", callback_data="refresh")
-    ])
-
-    markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
-
-    if edit:
-        await message.edit_text(text, parse_mode="HTML", reply_markup=markup)
-    else:
-        await message.answer(text, parse_mode="HTML", reply_markup=markup)
-
-
-# =====================================================
-# CALLBACKS
-# =====================================================
-
-@router.callback_query(F.data == "refresh")
-async def refresh(cb: CallbackQuery):
-    await cb.answer()
-    await send_dashboard(cb.message, edit=True)
-
 
 @router.callback_query(F.data.startswith("inwork:"))
 async def set_inwork(cb: CallbackQuery):
@@ -209,7 +174,16 @@ async def set_inwork(cb: CallbackQuery):
     lead_id = int(cb.data.split(":")[1])
     update_lead_status(lead_id, "in_work")
 
-    await send_dashboard(cb.message, edit=True)
+    await cb.message.edit_reply_markup(reply_markup=None)
+
+    leads = get_all_leads()
+    client_id = next((l[5] for l in leads if l[0] == lead_id), None)
+
+    if client_id:
+        await cb.bot.send_message(
+            client_id,
+            "👤 Ваше обращение принято специалистом."
+        )
 
 
 @router.callback_query(F.data.startswith("done:"))
@@ -219,11 +193,20 @@ async def set_done(cb: CallbackQuery):
     lead_id = int(cb.data.split(":")[1])
     update_lead_status(lead_id, "done")
 
-    await send_dashboard(cb.message, edit=True)
+    await cb.message.edit_reply_markup(reply_markup=None)
+
+    leads = get_all_leads()
+    client_id = next((l[5] for l in leads if l[0] == lead_id), None)
+
+    if client_id:
+        await cb.bot.send_message(
+            client_id,
+            "✅ Работа по вашему обращению завершена."
+        )
 
 
 # =====================================================
-# ОТВЕТ ПОЛЬЗОВАТЕЛЮ
+# ОТВЕТ АДМИНА
 # =====================================================
 
 @router.callback_query(F.data.startswith("reply:"))
@@ -234,19 +217,28 @@ async def reply_start(cb: CallbackQuery, state: FSMContext):
     await state.update_data(reply_user_id=user_id)
     await state.set_state(AdminReply.waiting_for_message)
 
-    await cb.message.answer("Введите сообщение для пользователя:")
+    await cb.message.answer("✍ Введите сообщение для пользователя:")
 
 
 @router.message(AdminReply.waiting_for_message)
 async def send_reply(message: Message, state: FSMContext):
+
     data = await state.get_data()
     user_id = data.get("reply_user_id")
 
     try:
         await message.bot.send_message(user_id, message.text)
-        await message.answer("Сообщение отправлено.")
+
+        # авто-перевод в работу
+        leads = get_all_leads()
+        for lead in leads:
+            if lead[5] == user_id and lead[6] == "new":
+                update_lead_status(lead[0], "in_work")
+
+        await message.answer("✅ Сообщение отправлено. Статус переведен в работу.")
+
     except:
-        await message.answer("Ошибка отправки.")
+        await message.answer("❌ Ошибка отправки.")
 
     await state.clear()
 
@@ -270,7 +262,7 @@ async def broadcast(message: Message):
     sent = 0
     failed = 0
 
-    await message.answer("Запуск рассылки...")
+    await message.answer("🚀 Запуск рассылки...")
 
     for user in users:
         try:
@@ -283,7 +275,7 @@ async def broadcast(message: Message):
             failed += 1
 
     await message.answer(
-        f"Рассылка завершена\n\n"
+        f"📊 Рассылка завершена\n\n"
         f"Всего: {len(users)}\n"
         f"Отправлено: {sent}\n"
         f"Ошибок: {failed}"
