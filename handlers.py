@@ -125,6 +125,7 @@ async def finish(message: Message, state: FSMContext):
 
     case_number = random.randint(1000, 9999)
 
+    # КЛИЕНТУ
     await message.answer(
         f"🏛 <b>Обращение зарегистрировано</b>\n\n"
         f"🧾 Номер дела: <b>{case_number}</b>\n\n"
@@ -133,6 +134,7 @@ async def finish(message: Message, state: FSMContext):
         reply_markup=remove_kb()
     )
 
+    # АДМИНУ
     admin_text = (
         f"📥 <b>Новая заявка №{lead_id}</b>\n\n"
         f"👤 {data.get('name')}\n"
@@ -170,16 +172,41 @@ async def finish(message: Message, state: FSMContext):
 async def set_inwork(cb: CallbackQuery):
     await cb.answer()
     lead_id = int(cb.data.split(":")[1])
+
     update_lead_status(lead_id, "in_work")
+
     await cb.message.edit_reply_markup(reply_markup=None)
+
+    leads = get_all_leads()
+    client_id = next((l[5] for l in leads if l[0] == lead_id), None)
+
+    if client_id:
+        await cb.bot.send_message(
+            client_id,
+            "👤 Ваше обращение принято специалистом.\n\n"
+            "📂 Начата подготовка.\n"
+            "💬 В ближайшее время сотрудник напишет вам здесь."
+        )
 
 
 @router.callback_query(F.data.startswith("done:"))
 async def set_done(cb: CallbackQuery):
     await cb.answer()
     lead_id = int(cb.data.split(":")[1])
+
     update_lead_status(lead_id, "done")
+
     await cb.message.edit_reply_markup(reply_markup=None)
+
+    leads = get_all_leads()
+    client_id = next((l[5] for l in leads if l[0] == lead_id), None)
+
+    if client_id:
+        await cb.bot.send_message(
+            client_id,
+            "✅ Работа по вашему обращению завершена.\n\n"
+            "Если потребуется помощь — мы всегда на связи."
+        )
 
 
 # =====================================================
