@@ -102,15 +102,6 @@ def admin_lead_kb(lead_id: int):
 
 # ================= АДМИН =================
 
-def admin_menu_kb():
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="📋 Все заявки")],
-            [KeyboardButton(text="🆕 Новые заявки")],
-            [KeyboardButton(text="👥 Пользователи")]
-        ],
-        resize_keyboard=True
-    )
 def confirm_kb():
     return InlineKeyboardMarkup(
         inline_keyboard=[
