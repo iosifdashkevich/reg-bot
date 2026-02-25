@@ -209,3 +209,21 @@ def get_last_users():
     cur.close()
     conn.close()
     return users
+# ================= ПОЛУЧИТЬ КЛИЕНТА ПО ID ЗАЯВКИ =================
+
+def get_lead_by_id(lead_id):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT telegram_id
+        FROM leads
+        WHERE id = %s;
+    """, (lead_id,))
+
+    result = cur.fetchone()
+
+    cur.close()
+    conn.close()
+
+    return result[0] if result else None
