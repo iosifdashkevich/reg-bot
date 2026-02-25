@@ -57,6 +57,54 @@ async def start(message: Message, state: FSMContext):
 
 
 # =====================================================
+# ВОРОНКА
+# =====================================================
+
+@router.message(RegForm.citizenship)
+async def step_citizenship(message: Message, state: FSMContext):
+    await state.update_data(citizenship=message.text)
+    await state.set_state(RegForm.term)
+    await message.answer("Выберите срок регистрации:", reply_markup=term_kb())
+
+
+@router.message(RegForm.term)
+async def step_term(message: Message, state: FSMContext):
+    await state.update_data(term=message.text)
+    await state.set_state(RegForm.urgency)
+    await message.answer("Когда нужно оформить?", reply_markup=urgency_kb())
+
+
+@router.message(RegForm.urgency)
+async def step_urgency(message: Message, state: FSMContext):
+    await state.update_data(urgency=message.text)
+    await state.set_state(RegForm.consent)
+    await message.answer(
+        "📄 Требуется согласие на обработку персональных данных.",
+        reply_markup=consent_kb()
+    )
+
+
+@router.message(RegForm.consent)
+async def step_consent(message: Message, state: FSMContext):
+    if message.text != "✅ Согласен":
+        await message.answer("Без согласия продолжение невозможно.")
+        return
+
+    await state.set_state(RegForm.name)
+    await message.answer("Как к вам можно обращаться?", reply_markup=remove_kb())
+
+
+@router.message(RegForm.name)
+async def step_name(message: Message, state: FSMContext):
+    await state.update_data(name=message.text)
+    await state.set_state(RegForm.contact)
+    await message.answer(
+        "📞 Оставьте номер телефона или нажмите кнопку ниже.",
+        reply_markup=contact_kb()
+    )
+
+
+# =====================================================
 # СОЗДАНИЕ ЗАЯВКИ
 # =====================================================
 
@@ -115,7 +163,7 @@ async def finish(message: Message, state: FSMContext):
 
 
 # =====================================================
-# СТАТУС: В РАБОТЕ
+# СТАТУС В РАБОТЕ
 # =====================================================
 
 @router.callback_query(F.data.startswith("inwork:"))
@@ -127,7 +175,6 @@ async def set_inwork(cb: CallbackQuery):
 
     client_id = get_lead_by_id(lead_id)
 
-    # Оставляем только кнопку ✍
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -145,14 +192,13 @@ async def set_inwork(cb: CallbackQuery):
         await cb.bot.send_message(
             client_id,
             "🏛 Обращение принято к исполнению.\n\n"
-            "📂 Назначен ответственный специалист.\n"
-            "🔎 Запущена процедура обработки.\n\n"
-            "📌 Специалист свяжется с вами в ближайшее время."
+            "📂 Назначен специалист.\n"
+            "📌 Он свяжется с вами в ближайшее время."
         )
 
 
 # =====================================================
-# СТАТУС: ЗАКРЫТА
+# СТАТУС ЗАКРЫТА
 # =====================================================
 
 @router.callback_query(F.data.startswith("done:"))
@@ -162,7 +208,6 @@ async def set_done(cb: CallbackQuery):
     lead_id = int(cb.data.split(":")[1])
     update_lead_status(lead_id, "done")
 
-    # Убираем все кнопки
     await cb.message.edit_reply_markup(reply_markup=None)
 
     client_id = get_lead_by_id(lead_id)
