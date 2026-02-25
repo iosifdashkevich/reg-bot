@@ -80,8 +80,8 @@ async def finish(message: Message, state: FSMContext):
     })
 
     await message.answer(
-        f"🏛 Обращение зарегистрировано\n\n"
-        f"⏳ Специалист свяжется с вами в ближайшее время.",
+        "🏛 Обращение зарегистрировано.\n\n"
+        "⏳ Специалист свяжется с вами в ближайшее время.",
         reply_markup=remove_kb()
     )
 
@@ -115,18 +115,31 @@ async def finish(message: Message, state: FSMContext):
 
 
 # =====================================================
-# КНОПКИ СТАТУСА В КАРТОЧКЕ
+# СТАТУС: В РАБОТЕ
 # =====================================================
 
 @router.callback_query(F.data.startswith("inwork:"))
 async def set_inwork(cb: CallbackQuery):
     await cb.answer()
-    lead_id = int(cb.data.split(":")[1])
 
+    lead_id = int(cb.data.split(":")[1])
     update_lead_status(lead_id, "in_work")
-    await cb.message.edit_reply_markup(reply_markup=None)
 
     client_id = get_lead_by_id(lead_id)
+
+    # Оставляем только кнопку ✍
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="✍ Ответить",
+                    callback_data=f"reply:{client_id}"
+                )
+            ]
+        ]
+    )
+
+    await cb.message.edit_reply_markup(reply_markup=keyboard)
 
     if client_id:
         await cb.bot.send_message(
@@ -138,12 +151,18 @@ async def set_inwork(cb: CallbackQuery):
         )
 
 
+# =====================================================
+# СТАТУС: ЗАКРЫТА
+# =====================================================
+
 @router.callback_query(F.data.startswith("done:"))
 async def set_done(cb: CallbackQuery):
     await cb.answer()
-    lead_id = int(cb.data.split(":")[1])
 
+    lead_id = int(cb.data.split(":")[1])
     update_lead_status(lead_id, "done")
+
+    # Убираем все кнопки
     await cb.message.edit_reply_markup(reply_markup=None)
 
     client_id = get_lead_by_id(lead_id)
@@ -154,6 +173,36 @@ async def set_done(cb: CallbackQuery):
             "✅ Работа по вашему обращению завершена.\n\n"
             "Если потребуется помощь — будем рады помочь снова."
         )
+
+
+# =====================================================
+# ОТВЕТ АДМИНА
+# =====================================================
+
+@router.callback_query(F.data.startswith("reply:"))
+async def reply_start(cb: CallbackQuery, state: FSMContext):
+    await cb.answer()
+
+    user_id = int(cb.data.split(":")[1])
+    await state.update_data(reply_user_id=user_id)
+    await state.set_state(AdminReply.waiting_for_message)
+
+    await cb.message.answer("✍ Введите сообщение для пользователя:")
+
+
+@router.message(AdminReply.waiting_for_message)
+async def send_reply(message: Message, state: FSMContext):
+
+    data = await state.get_data()
+    user_id = data.get("reply_user_id")
+
+    try:
+        await message.bot.send_message(user_id, message.text)
+        await message.answer("✅ Сообщение отправлено пользователю.")
+    except:
+        await message.answer("❌ Ошибка отправки.")
+
+    await state.clear()
 
 
 # =====================================================
