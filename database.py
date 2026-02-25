@@ -1,55 +1,54 @@
-import sqlite3
+import os
+import psycopg2
 from datetime import datetime
 
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-# ================= СОЗДАНИЕ БАЗЫ =================
+def get_connection():
+    return psycopg2.connect(DATABASE_URL)
+
 
 def init_db():
-    conn = sqlite3.connect("leads.db")
-    cursor = conn.cursor()
+    conn = get_connection()
+    cur = conn.cursor()
 
-    # таблица заявок
-    cursor.execute("""
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        telegram_id BIGINT UNIQUE,
+        username TEXT,
+        first_seen TEXT
+    );
+    """)
+
+    cur.execute("""
     CREATE TABLE IF NOT EXISTS leads (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         created_at TEXT,
         name TEXT,
         phone TEXT,
-        telegram_id INTEGER,
+        telegram_id BIGINT,
         username TEXT,
         citizenship TEXT,
         term TEXT,
         urgency TEXT,
         status TEXT
-    )
-    """)
-
-    # таблица пользователей
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        telegram_id INTEGER UNIQUE,
-        username TEXT,
-        first_seen TEXT
-    )
+    );
     """)
 
     conn.commit()
+    cur.close()
     conn.close()
 
 
-# ================= ДОБАВИТЬ ПОЛЬЗОВАТЕЛЯ =================
+def add_user(telegram_id, username):
+    conn = get_connection()
+    cur = conn.cursor()
 
-def add_user(telegram_id: int, username: str):
-    conn = sqlite3.connect("leads.db")
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    INSERT OR IGNORE INTO users (
-        telegram_id,
-        username,
-        first_seen
-    ) VALUES (?, ?, ?)
+    cur.execute("""
+    INSERT INTO users (telegram_id, username, first_seen)
+    VALUES (%s, %s, %s)
+    ON CONFLICT (telegram_id) DO NOTHING;
     """, (
         telegram_id,
         username,
@@ -57,16 +56,48 @@ def add_user(telegram_id: int, username: str):
     ))
 
     conn.commit()
+    cur.close()
     conn.close()
 
 
-# ================= ДОБАВИТЬ ЗАЯВКУ =================
+def get_all_users():
+    conn = get_connection()
+    cur = conn.cursor()
 
-def add_lead(data: dict):
-    conn = sqlite3.connect("leads.db")
-    cursor = conn.cursor()
+    cur.execute("""
+    SELECT telegram_id, username, first_seen
+    FROM users
+    ORDER BY id DESC
+    LIMIT 5;
+    """)
 
-    cursor.execute("""
+    users = cur.fetchall()
+
+    cur.close()
+    conn.close()
+    return users
+
+
+def get_all_users_full():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+    SELECT telegram_id FROM users;
+    """)
+
+    users = cur.fetchall()
+
+    cur.close()
+    conn.close()
+    return users
+
+
+def add_lead(data):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
     INSERT INTO leads (
         created_at,
         name,
@@ -77,7 +108,8 @@ def add_lead(data: dict):
         term,
         urgency,
         status
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+    RETURNING id;
     """, (
         datetime.now().strftime("%Y-%m-%d %H:%M"),
         data["name"],
@@ -90,108 +122,23 @@ def add_lead(data: dict):
         "new"
     ))
 
-    lead_id = cursor.lastrowid
+    lead_id = cur.fetchone()[0]
 
     conn.commit()
+    cur.close()
     conn.close()
 
     return lead_id
 
 
-# ================= ВСЕ ЗАЯВКИ =================
+def update_lead_status(lead_id, status):
+    conn = get_connection()
+    cur = conn.cursor()
 
-def get_all_leads():
-    conn = sqlite3.connect("leads.db")
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    SELECT id, created_at, name, phone, username, telegram_id, status
-    FROM leads
-    ORDER BY id DESC
-    LIMIT 20
-    """)
-
-    rows = cursor.fetchall()
-    conn.close()
-    return rows
-
-
-# ================= НОВЫЕ ЗАЯВКИ =================
-
-def get_new_leads():
-    conn = sqlite3.connect("leads.db")
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    SELECT id, created_at, name, phone, username, telegram_id
-    FROM leads
-    WHERE status = 'new'
-    ORDER BY id DESC
-    """)
-
-    rows = cursor.fetchall()
-    conn.close()
-    return rows
-
-
-# ================= ИЗМЕНИТЬ СТАТУС =================
-
-def update_lead_status(lead_id: int, status: str):
-    conn = sqlite3.connect("leads.db")
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    UPDATE leads
-    SET status = ?
-    WHERE id = ?
+    cur.execute("""
+    UPDATE leads SET status = %s WHERE id = %s;
     """, (status, lead_id))
 
     conn.commit()
+    cur.close()
     conn.close()
-
-
-# ================= ВСЕ ПОЛЬЗОВАТЕЛИ (ДЛЯ РАССЫЛКИ 20k+) =================
-
-def get_all_users_full():
-    conn = sqlite3.connect("leads.db")
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    SELECT telegram_id
-    FROM users
-    """)
-
-    rows = cursor.fetchall()
-    conn.close()
-    return rows
-
-
-# ================= ПОСЛЕДНИЕ 5 ПОЛЬЗОВАТЕЛЕЙ (ДЛЯ АДМИНКИ) =================
-
-def get_last_users():
-    conn = sqlite3.connect("leads.db")
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    SELECT telegram_id, username, first_seen
-    FROM users
-    ORDER BY id DESC
-    LIMIT 5
-    """)
-
-    rows = cursor.fetchall()
-    conn.close()
-    return rows
-
-
-# ================= КОЛИЧЕСТВО ПОЛЬЗОВАТЕЛЕЙ =================
-
-def get_users_count():
-    conn = sqlite3.connect("leads.db")
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT COUNT(*) FROM users")
-    count = cursor.fetchone()[0]
-
-    conn.close()
-    return count
