@@ -129,7 +129,7 @@ async def finish(message: Message, state: FSMContext):
         "urgency": data.get("urgency")
     })
 
-    client_number = random.randint(1342, 1489)
+    client_number = random.randint(1000, 9999)
 
     await message.answer(
         f"🏛 Обращение зарегистрировано.\n\n"
@@ -155,44 +155,49 @@ async def finish(message: Message, state: FSMContext):
     )
 
 
-# ================= СТАТУСЫ =================
+# ================= ВСЕ ЗАЯВКИ =================
 
-@router.callback_query(F.data.startswith("lead_work_"))
-async def lead_in_work(cb: CallbackQuery):
-    await cb.answer()
-    lead_id = int(cb.data.replace("lead_work_", ""))
-    update_lead_status(lead_id, "in_work")
-
+@router.message(F.text == "📋 Все заявки")
+async def all_leads(message: Message):
     leads = get_all_leads()
-    client_id = next((l[5] for l in leads if l[0] == lead_id), None)
 
-    await cb.message.edit_reply_markup(reply_markup=None)
-    await cb.message.answer(f"🟡 Заявка {lead_id} переведена в работу")
+    if not leads:
+        await message.answer("Заявок нет")
+        return
 
-    if client_id:
-        await cb.bot.send_message(
-            client_id,
-            "👤 Ваше обращение принято специалистом."
+    text = "📋 Последние заявки:\n\n"
+
+    for lead in leads:
+        text += (
+            f"№{lead[0]} | {lead[1]}\n"
+            f"Имя: {lead[2]}\n"
+            f"Телефон: {lead[3]}\n"
+            f"Статус: {lead[6]}\n\n"
         )
 
+    await message.answer(text)
 
-@router.callback_query(F.data.startswith("lead_done_"))
-async def lead_done(cb: CallbackQuery):
-    await cb.answer()
-    lead_id = int(cb.data.replace("lead_done_", ""))
-    update_lead_status(lead_id, "done")
 
-    leads = get_all_leads()
-    client_id = next((l[5] for l in leads if l[0] == lead_id), None)
+# ================= НОВЫЕ ЗАЯВКИ =================
 
-    await cb.message.edit_reply_markup(reply_markup=None)
-    await cb.message.answer(f"✅ Заявка {lead_id} закрыта")
+@router.message(F.text == "🆕 Новые заявки")
+async def new_leads(message: Message):
+    leads = get_new_leads()
 
-    if client_id:
-        await cb.bot.send_message(
-            client_id,
-            "✅ Работа по вашему обращению завершена."
+    if not leads:
+        await message.answer("Новых заявок нет")
+        return
+
+    text = "🆕 Новые заявки:\n\n"
+
+    for lead in leads:
+        text += (
+            f"№{lead[0]} | {lead[1]}\n"
+            f"Имя: {lead[2]}\n"
+            f"Телефон: {lead[3]}\n\n"
         )
+
+    await message.answer(text)
 
 
 # ================= АДМИНКА =================
@@ -210,8 +215,11 @@ async def admin_panel(message: Message):
     )
 
 
+# ================= ПОЛЬЗОВАТЕЛИ =================
+
 @router.message(F.text == "👥 Пользователи")
 async def users_list(message: Message):
+
     users = get_last_users()
 
     if not users:
@@ -219,9 +227,7 @@ async def users_list(message: Message):
         return
 
     for user in users:
-        telegram_id = user[0]
-        username = user[1]
-        first_seen = user[2]
+        telegram_id, username, first_seen = user
 
         profile_link = f'<a href="tg://user?id={telegram_id}">{telegram_id}</a>'
 
