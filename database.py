@@ -82,10 +82,7 @@ def get_all_users_full():
     conn = get_connection()
     cur = conn.cursor()
 
-    cur.execute("""
-    SELECT telegram_id FROM users;
-    """)
-
+    cur.execute("SELECT telegram_id FROM users;")
     users = cur.fetchall()
 
     cur.close()
@@ -131,12 +128,50 @@ def add_lead(data):
     return lead_id
 
 
+def get_all_leads():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+    SELECT id, created_at, name, phone, username, telegram_id, status
+    FROM leads
+    ORDER BY id DESC
+    LIMIT 20;
+    """)
+
+    leads = cur.fetchall()
+
+    cur.close()
+    conn.close()
+    return leads
+
+
+def get_new_leads():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+    SELECT id, created_at, name, phone, username, telegram_id
+    FROM leads
+    WHERE status = 'new'
+    ORDER BY id DESC;
+    """)
+
+    leads = cur.fetchall()
+
+    cur.close()
+    conn.close()
+    return leads
+
+
 def update_lead_status(lead_id, status):
     conn = get_connection()
     cur = conn.cursor()
 
     cur.execute("""
-    UPDATE leads SET status = %s WHERE id = %s;
+    UPDATE leads
+    SET status = %s
+    WHERE id = %s;
     """, (status, lead_id))
 
     conn.commit()
