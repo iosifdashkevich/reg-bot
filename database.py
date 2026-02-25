@@ -177,3 +177,35 @@ def update_lead_status(lead_id, status):
     conn.commit()
     cur.close()
     conn.close()
+# ================= КОЛИЧЕСТВО ПОЛЬЗОВАТЕЛЕЙ =================
+
+def get_users_count():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT COUNT(*) FROM users;")
+    count = cur.fetchone()[0]
+
+    cur.close()
+    conn.close()
+    return count
+
+
+# ================= ПОСЛЕДНИЕ 5 ПОЛЬЗОВАТЕЛЕЙ =================
+
+def get_last_users():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+    SELECT telegram_id, username, first_seen
+    FROM users
+    ORDER BY id DESC
+    LIMIT 5;
+    """)
+
+    users = cur.fetchall()
+
+    cur.close()
+    conn.close()
+    return users
