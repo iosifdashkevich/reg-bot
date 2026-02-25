@@ -4,14 +4,24 @@ from datetime import datetime
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
+
+# =====================================================
+# ПОДКЛЮЧЕНИЕ
+# =====================================================
+
 def get_connection():
     return psycopg2.connect(DATABASE_URL)
 
+
+# =====================================================
+# ИНИЦИАЛИЗАЦИЯ БАЗЫ
+# =====================================================
 
 def init_db():
     conn = get_connection()
     cur = conn.cursor()
 
+    # Таблица пользователей
     cur.execute("""
     CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -21,6 +31,7 @@ def init_db():
     );
     """)
 
+    # Таблица заявок
     cur.execute("""
     CREATE TABLE IF NOT EXISTS leads (
         id SERIAL PRIMARY KEY,
@@ -41,6 +52,10 @@ def init_db():
     conn.close()
 
 
+# =====================================================
+# ПОЛЬЗОВАТЕЛИ
+# =====================================================
+
 def add_user(telegram_id, username):
     conn = get_connection()
     cur = conn.cursor()
@@ -60,7 +75,19 @@ def add_user(telegram_id, username):
     conn.close()
 
 
-def get_all_users():
+def get_users_count():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT COUNT(*) FROM users;")
+    count = cur.fetchone()[0]
+
+    cur.close()
+    conn.close()
+    return count
+
+
+def get_last_users():
     conn = get_connection()
     cur = conn.cursor()
 
@@ -89,6 +116,10 @@ def get_all_users_full():
     conn.close()
     return users
 
+
+# =====================================================
+# ЗАЯВКИ
+# =====================================================
 
 def add_lead(data):
     conn = get_connection()
@@ -177,39 +208,11 @@ def update_lead_status(lead_id, status):
     conn.commit()
     cur.close()
     conn.close()
-# ================= КОЛИЧЕСТВО ПОЛЬЗОВАТЕЛЕЙ =================
-
-def get_users_count():
-    conn = get_connection()
-    cur = conn.cursor()
-
-    cur.execute("SELECT COUNT(*) FROM users;")
-    count = cur.fetchone()[0]
-
-    cur.close()
-    conn.close()
-    return count
 
 
-# ================= ПОСЛЕДНИЕ 5 ПОЛЬЗОВАТЕЛЕЙ =================
-
-def get_last_users():
-    conn = get_connection()
-    cur = conn.cursor()
-
-    cur.execute("""
-    SELECT telegram_id, username, first_seen
-    FROM users
-    ORDER BY id DESC
-    LIMIT 5;
-    """)
-
-    users = cur.fetchall()
-
-    cur.close()
-    conn.close()
-    return users
-# ================= ПОЛУЧИТЬ КЛИЕНТА ПО ID ЗАЯВКИ =================
+# =====================================================
+# ПОЛУЧИТЬ TELEGRAM ID ПО ID ЗАЯВКИ
+# =====================================================
 
 def get_lead_by_id(lead_id):
     conn = get_connection()
