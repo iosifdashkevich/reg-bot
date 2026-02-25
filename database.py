@@ -8,7 +8,7 @@ def init_db():
     conn = sqlite3.connect("leads.db")
     cursor = conn.cursor()
 
-    # заявки
+    # таблица заявок
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS leads (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -24,7 +24,7 @@ def init_db():
     )
     """)
 
-    # пользователи
+    # таблица пользователей
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -90,12 +90,12 @@ def add_lead(data: dict):
         "new"
     ))
 
-    lead_id = cursor.lastrowid  # 🔥 ВАЖНО
+    lead_id = cursor.lastrowid
 
     conn.commit()
     conn.close()
 
-    return lead_id  # 🔥 ВОЗВРАЩАЕМ ID
+    return lead_id
 
 
 # ================= ВСЕ ЗАЯВКИ =================
@@ -150,9 +150,25 @@ def update_lead_status(lead_id: int, status: str):
     conn.close()
 
 
-# ================= ВСЕ ПОЛЬЗОВАТЕЛИ =================
+# ================= ВСЕ ПОЛЬЗОВАТЕЛИ (ДЛЯ РАССЫЛКИ 20k+) =================
 
-def get_all_users():
+def get_all_users_full():
+    conn = sqlite3.connect("leads.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT telegram_id
+    FROM users
+    """)
+
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+
+# ================= ПОСЛЕДНИЕ 5 ПОЛЬЗОВАТЕЛЕЙ (ДЛЯ АДМИНКИ) =================
+
+def get_last_users():
     conn = sqlite3.connect("leads.db")
     cursor = conn.cursor()
 
@@ -160,9 +176,22 @@ def get_all_users():
     SELECT telegram_id, username, first_seen
     FROM users
     ORDER BY id DESC
-    LIMIT 30
+    LIMIT 5
     """)
 
     rows = cursor.fetchall()
     conn.close()
     return rows
+
+
+# ================= КОЛИЧЕСТВО ПОЛЬЗОВАТЕЛЕЙ =================
+
+def get_users_count():
+    conn = sqlite3.connect("leads.db")
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT COUNT(*) FROM users")
+    count = cursor.fetchone()[0]
+
+    conn.close()
+    return count
