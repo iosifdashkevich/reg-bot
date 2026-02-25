@@ -178,10 +178,7 @@ async def set_inwork(cb: CallbackQuery):
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(
-                    text="✍ Ответить",
-                    callback_data=f"reply:{client_id}"
-                )
+                InlineKeyboardButton(text="✍ Ответить", callback_data=f"reply:{client_id}")
             ]
         ]
     )
@@ -192,8 +189,7 @@ async def set_inwork(cb: CallbackQuery):
         await cb.bot.send_message(
             client_id,
             "🏛 Обращение принято к исполнению.\n\n"
-            "📂 Назначен специалист.\n"
-            "📌 Он свяжется с вами в ближайшее время."
+            "📌 Специалист свяжется с вами в ближайшее время."
         )
 
 
@@ -216,7 +212,7 @@ async def set_done(cb: CallbackQuery):
         await cb.bot.send_message(
             client_id,
             "✅ Работа по вашему обращению завершена.\n\n"
-            "Если потребуется помощь — будем рады помочь снова."
+            "Будем рады помочь снова."
         )
 
 
@@ -227,11 +223,9 @@ async def set_done(cb: CallbackQuery):
 @router.callback_query(F.data.startswith("reply:"))
 async def reply_start(cb: CallbackQuery, state: FSMContext):
     await cb.answer()
-
     user_id = int(cb.data.split(":")[1])
     await state.update_data(reply_user_id=user_id)
     await state.set_state(AdminReply.waiting_for_message)
-
     await cb.message.answer("✍ Введите сообщение для пользователя:")
 
 
@@ -248,36 +242,3 @@ async def send_reply(message: Message, state: FSMContext):
         await message.answer("❌ Ошибка отправки.")
 
     await state.clear()
-
-
-# =====================================================
-# DASHBOARD
-# =====================================================
-
-@router.message(Command("admin"))
-async def admin_panel(message: Message):
-    if message.from_user.id != ADMIN_ID:
-        return
-
-    total_users = get_users_count()
-    leads = get_all_leads()
-
-    text = f"<b>📊 Панель управления</b>\n\n"
-    text += f"👥 Пользователей: {total_users}\n\n"
-    text += "<b>Последние заявки:</b>\n"
-
-    keyboard = []
-
-    for lead in leads[:5]:
-        lead_id = lead[0]
-        status = lead[6]
-        text += f"№{lead_id} | {status}\n"
-
-        keyboard.append([
-            InlineKeyboardButton(text="🟡", callback_data=f"inwork:{lead_id}"),
-            InlineKeyboardButton(text="✅", callback_data=f"done:{lead_id}")
-        ])
-
-    markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
-
-    await message.answer(text, parse_mode="HTML", reply_markup=markup)
