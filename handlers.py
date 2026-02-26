@@ -29,7 +29,8 @@ from database import (
     add_user,
     get_users_count,
     get_lead_by_id,
-    get_all_leads
+    get_all_leads,
+    get_last_lead_by_user
 )
 
 router = Router()
@@ -126,9 +127,11 @@ async def finish(message: Message, state: FSMContext):
     display_id = lead_id + 1499
     formatted_id = f"MSK-{display_id}/26"
 
+    # ================= CLIENT MESSAGE =================
+
     await message.answer(
-        f"🏛 Обращение зарегистрировано в системе.\n\n"
-        f"🧾 Номер дела: <b>{formatted_id}</b>\n\n"
+        f"🏛 Обращение зарегистрировано.\n\n"
+        f"🧾 Номер дела: <code>{formatted_id}</code>\n\n"
         f"📂 Материалы переданы специалисту.\n"
         f"⏳ Ожидайте подключение в течение 5–15 минут.\n\n"
         f"📌 Пожалуйста, оставайтесь на связи.",
@@ -136,19 +139,20 @@ async def finish(message: Message, state: FSMContext):
         reply_markup=remove_kb()
     )
 
-    # username ссылка
+    # ================= ADMIN MESSAGE =================
+
     if username_raw:
         username_link = f"<a href='https://t.me/{username_raw}'>@{username_raw}</a>"
     else:
         username_link = "нет"
 
     admin_text = (
-        f"🆕 <b>Заявка №{formatted_id}</b>\n\n"
+        f"🆕 <b>Заявка №</b><code>{formatted_id}</code>\n\n"
         f"👤 <b>Имя:</b> {data.get('name')}\n"
         f"📞 <b>Телефон:</b> {contact}\n"
         f"🆔 <b>ID:</b> <a href='tg://user?id={message.from_user.id}'>{message.from_user.id}</a>\n"
         f"🔗 <b>Username:</b> {username_link}\n\n"
-        f"📅 <b>Срок:</b> {data.get('term')}\n"
+        f"📄 <b>Срок:</b> {data.get('term')}\n"
         f"🚀 <b>Срочность:</b> {data.get('urgency')}\n"
         f"🌍 <b>Статус клиента:</b> {data.get('citizenship')}\n\n"
         f"📌 <b>Статус заявки:</b> new"
@@ -216,13 +220,7 @@ async def set_done(cb: CallbackQuery):
 
     client_id = await to_thread(get_lead_by_id, lead_id)
 
-    new_keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="✍ Ответить", callback_data=f"reply:{client_id}")]
-        ]
-    )
-
-    await cb.message.edit_reply_markup(reply_markup=new_keyboard)
+    await cb.message.edit_reply_markup(reply_markup=None)
 
     if client_id:
         await cb.bot.send_message(
@@ -280,7 +278,8 @@ async def build_dashboard_text():
         formatted_id = f"MSK-{display_id}/26"
 
         icon = "🆕" if status == "new" else "🟡" if status == "in_work" else "✅"
-        text += f"{icon} {formatted_id}\n"
+
+        text += f"{icon} <code>{formatted_id}</code>\n"
 
         keyboard.append([
             InlineKeyboardButton(text="🟡", callback_data=f"inwork:{lead_id}"),
@@ -295,12 +294,6 @@ async def admin_panel(message: Message):
         return
 
     global active_dashboard
-
-    if active_dashboard["message"]:
-        try:
-            await active_dashboard["message"].delete()
-        except:
-            pass
 
     text, markup = await build_dashboard_text()
 
