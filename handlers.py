@@ -1,4 +1,5 @@
 import asyncio
+from asyncio import to_thread
 
 from aiogram import Router, F
 from aiogram.types import (
@@ -9,7 +10,6 @@ from aiogram.types import (
 )
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import Command
-from asyncio import to_thread
 
 from states import RegForm, AdminReply
 from keyboards import (
@@ -57,10 +57,7 @@ async def start(message: Message, state: FSMContext):
         reply_markup=channel_kb()
     )
 
-    await message.answer(
-        "Выберите ваш статус:",
-        reply_markup=citizenship_kb()
-    )
+    await message.answer("Выберите ваш статус:", reply_markup=citizenship_kb())
 
 # ==================================================
 # ВОРОНКА
@@ -116,13 +113,14 @@ async def finish(message: Message, state: FSMContext):
     await state.clear()
 
     contact = message.contact.phone_number if message.contact else message.text
-    username = f"@{message.from_user.username}" if message.from_user.username else "без username"
+    username_raw = message.from_user.username
+    username_display = f"@{username_raw}" if username_raw else "нет"
 
     lead_id = await to_thread(add_lead, {
         "name": data.get("name"),
         "phone": contact,
         "telegram_id": message.from_user.id,
-        "username": username,
+        "username": username_display,
         "citizenship": data.get("citizenship"),
         "term": data.get("term"),
         "urgency": data.get("urgency")
@@ -131,15 +129,30 @@ async def finish(message: Message, state: FSMContext):
     display_id = lead_id + 1499
     formatted_id = f"MSK-{display_id}/26"
 
+    # сообщение клиенту
     await message.answer(
         f"🏛 Обращение зарегистрировано в системе.\n\n"
         f"🧾 Номер дела: <b>{formatted_id}</b>\n\n"
-        f"📂 Материалы переданы на распределение специалисту.\n"
-        f"👤 Ответственный сотрудник будет назначен автоматически.\n\n"
+        f"📂 Материалы переданы специалисту.\n"
         f"⏳ Ожидайте подключение в течение 5–15 минут.\n\n"
         f"📌 Пожалуйста, оставайтесь на связи.",
         parse_mode="HTML",
         reply_markup=remove_kb()
+    )
+
+    # сообщение админу
+    admin_text = (
+        f"🆕 <b>Заявка №{formatted_id}</b>\n\n"
+        f"👤 <b>Имя:</b> {data.get('name')}\n"
+        f"📞 <b>Телефон:</b> {contact}\n"
+        f"🆔 <b>ID:</b> "
+        f"<a href='tg://user?id={message.from_user.id}'>{message.from_user.id}</a>\n"
+        f"🔗 <b>Username:</b> "
+        f"{f'<a href=\"https://t.me/{username_raw}\">@{username_raw}</a>' if username_raw else 'нет'}\n\n"
+        f"📅 <b>Срок:</b> {data.get('term')}\n"
+        f"🚀 <b>Срочность:</b> {data.get('urgency')}\n"
+        f"🌍 <b>Статус клиента:</b> {data.get('citizenship')}\n\n"
+        f"📌 <b>Статус заявки:</b> new"
     )
 
     keyboard = InlineKeyboardMarkup(
@@ -156,15 +169,16 @@ async def finish(message: Message, state: FSMContext):
 
     await message.bot.send_message(
         ADMIN_ID,
-        f"📥 <b>Новая заявка №{formatted_id}</b>",
+        admin_text,
         parse_mode="HTML",
-        reply_markup=keyboard
+        reply_markup=keyboard,
+        disable_web_page_preview=True
     )
 
     await refresh_dashboard_now()
 
 # ==================================================
-# СТАТУСЫ
+# СТАТУС В РАБОТЕ
 # ==================================================
 
 @router.callback_query(F.data.startswith("inwork:"))
@@ -176,15 +190,27 @@ async def set_inwork(cb: CallbackQuery):
 
     client_id = await to_thread(get_lead_by_id, lead_id)
 
+    new_keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="✅ Завершена", callback_data=f"done:{lead_id}")],
+            [InlineKeyboardButton(text="✍ Ответить", callback_data=f"reply:{client_id}")]
+        ]
+    )
+
+    await cb.message.edit_reply_markup(reply_markup=new_keyboard)
+
     if client_id:
         await cb.bot.send_message(
             client_id,
             "🏛 Обращение принято к исполнению.\n\n"
-            "📂 Назначен ответственный специалист.\n"
             "📌 Специалист свяжется с вами в ближайшее время."
         )
 
     await refresh_dashboard_now()
+
+# ==================================================
+# СТАТУС ЗАВЕРШЕНА
+# ==================================================
 
 @router.callback_query(F.data.startswith("done:"))
 async def set_done(cb: CallbackQuery):
@@ -194,6 +220,14 @@ async def set_done(cb: CallbackQuery):
     await to_thread(update_lead_status, lead_id, "done")
 
     client_id = await to_thread(get_lead_by_id, lead_id)
+
+    new_keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="✍ Ответить", callback_data=f"reply:{client_id}")]
+        ]
+    )
+
+    await cb.message.edit_reply_markup(reply_markup=new_keyboard)
 
     if client_id:
         await cb.bot.send_message(
@@ -218,14 +252,8 @@ async def reply_start(cb: CallbackQuery, state: FSMContext):
 
 @router.message(AdminReply.waiting_for_message)
 async def send_reply(message: Message, state: FSMContext):
-
     data = await state.get_data()
     user_id = data.get("reply_user_id")
-
-    if not user_id:
-        await message.answer("❌ Ошибка. Пользователь не найден.")
-        await state.clear()
-        return
 
     try:
         await message.bot.send_message(user_id, message.text)
@@ -264,8 +292,7 @@ async def build_dashboard_text():
             InlineKeyboardButton(text="✅", callback_data=f"done:{lead_id}")
         ])
 
-    markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
-    return text, markup
+    return text, InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 @router.message(Command("admin"))
 async def admin_panel(message: Message):
@@ -291,8 +318,6 @@ async def admin_panel(message: Message):
     active_dashboard["message"] = panel_message
 
 async def refresh_dashboard_now():
-    global active_dashboard
-
     if not active_dashboard["message"]:
         return
 
