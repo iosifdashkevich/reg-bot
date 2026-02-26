@@ -10,7 +10,7 @@ from aiogram.types import (
 )
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import Command
-from aiogram.exceptions import TelegramRetryAfter
+from asyncio import to_thread
 
 from states import RegForm, AdminReply
 from keyboards import (
@@ -28,7 +28,6 @@ from database import (
     add_lead,
     update_lead_status,
     add_user,
-    get_all_users_full,
     get_users_count,
     get_last_users,
     get_lead_by_id,
@@ -37,14 +36,22 @@ from database import (
 
 router = Router()
 
-# =====================================================
+# ==========================================
+# ACTIVE DASHBOARD (только одна панель)
+# ==========================================
+
+active_dashboard = {
+    "message": None
+}
+
+# ==========================================
 # START
-# =====================================================
+# ==========================================
 
 @router.message(Command("start"))
 async def start(message: Message, state: FSMContext):
     username = f"@{message.from_user.username}" if message.from_user.username else ""
-    add_user(message.from_user.id, username)
+    await to_thread(add_user, message.from_user.id, username)
 
     await state.clear()
     await state.set_state(RegForm.citizenship)
@@ -53,12 +60,16 @@ async def start(message: Message, state: FSMContext):
         "📢 Ознакомьтесь с информацией в нашем Telegram-канале.",
         reply_markup=channel_kb()
     )
-    await message.answer("Выберите ваш статус:", reply_markup=citizenship_kb())
+
+    await message.answer(
+        "Выберите ваш статус:",
+        reply_markup=citizenship_kb()
+    )
 
 
-# =====================================================
+# ==========================================
 # ВОРОНКА
-# =====================================================
+# ==========================================
 
 @router.message(RegForm.citizenship)
 async def step_citizenship(message: Message, state: FSMContext):
@@ -104,9 +115,9 @@ async def step_name(message: Message, state: FSMContext):
     )
 
 
-# =====================================================
+# ==========================================
 # СОЗДАНИЕ ЗАЯВКИ
-# =====================================================
+# ==========================================
 
 @router.message(RegForm.contact)
 async def finish(message: Message, state: FSMContext):
@@ -117,7 +128,7 @@ async def finish(message: Message, state: FSMContext):
     contact = message.contact.phone_number if message.contact else message.text
     username = f"@{message.from_user.username}" if message.from_user.username else "без username"
 
-    lead_id = add_lead({
+    lead_id = await to_thread(add_lead, {
         "name": data.get("name"),
         "phone": contact,
         "telegram_id": message.from_user.id,
@@ -127,7 +138,6 @@ async def finish(message: Message, state: FSMContext):
         "urgency": data.get("urgency")
     })
 
-    # Формат номера MSK-1500/26
     display_id = lead_id + 1499
     formatted_id = f"MSK-{display_id}/26"
 
@@ -142,15 +152,7 @@ async def finish(message: Message, state: FSMContext):
         reply_markup=remove_kb()
     )
 
-    admin_text = (
-        f"📥 <b>Новая заявка №{formatted_id}</b>\n\n"
-        f"👤 {data.get('name')}\n"
-        f"📞 {contact}\n"
-        f"🆔 {message.from_user.id}\n"
-        f"🔗 {username}\n\n"
-        f"📌 Статус: new"
-    )
-
+    # сообщение админу
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -165,34 +167,26 @@ async def finish(message: Message, state: FSMContext):
 
     await message.bot.send_message(
         ADMIN_ID,
-        admin_text,
+        f"📥 <b>Новая заявка №{formatted_id}</b>",
         parse_mode="HTML",
         reply_markup=keyboard
     )
 
+    await refresh_dashboard_now()
 
-# =====================================================
-# СТАТУС В РАБОТЕ
-# =====================================================
+
+# ==========================================
+# СТАТУСЫ
+# ==========================================
 
 @router.callback_query(F.data.startswith("inwork:"))
 async def set_inwork(cb: CallbackQuery):
     await cb.answer()
 
     lead_id = int(cb.data.split(":")[1])
-    update_lead_status(lead_id, "in_work")
+    await to_thread(update_lead_status, lead_id, "in_work")
 
-    client_id = get_lead_by_id(lead_id)
-
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(text="✍ Ответить", callback_data=f"reply:{client_id}")
-            ]
-        ]
-    )
-
-    await cb.message.edit_reply_markup(reply_markup=keyboard)
+    client_id = await to_thread(get_lead_by_id, lead_id)
 
     if client_id:
         await cb.bot.send_message(
@@ -202,21 +196,17 @@ async def set_inwork(cb: CallbackQuery):
             "📌 Специалист свяжется с вами в ближайшее время."
         )
 
+    await refresh_dashboard_now()
 
-# =====================================================
-# СТАТУС ЗАВЕРШЕНА
-# =====================================================
 
 @router.callback_query(F.data.startswith("done:"))
 async def set_done(cb: CallbackQuery):
     await cb.answer()
 
     lead_id = int(cb.data.split(":")[1])
-    update_lead_status(lead_id, "done")
+    await to_thread(update_lead_status, lead_id, "done")
 
-    await cb.message.edit_reply_markup(reply_markup=None)
-
-    client_id = get_lead_by_id(lead_id)
+    client_id = await to_thread(get_lead_by_id, lead_id)
 
     if client_id:
         await cb.bot.send_message(
@@ -225,60 +215,35 @@ async def set_done(cb: CallbackQuery):
             "Благодарим за доверие."
         )
 
-
-# =====================================================
-# ОТВЕТ АДМИНА
-# =====================================================
-
-@router.callback_query(F.data.startswith("reply:"))
-async def reply_start(cb: CallbackQuery, state: FSMContext):
-    await cb.answer()
-    user_id = int(cb.data.split(":")[1])
-    await state.update_data(reply_user_id=user_id)
-    await state.set_state(AdminReply.waiting_for_message)
-    await cb.message.answer("✍ Введите сообщение для пользователя:")
+    await refresh_dashboard_now()
 
 
-@router.message(AdminReply.waiting_for_message)
-async def send_reply(message: Message, state: FSMContext):
-
-    data = await state.get_data()
-    user_id = data.get("reply_user_id")
-
-    try:
-        await message.bot.send_message(user_id, message.text)
-        await message.answer("✅ Сообщение отправлено пользователю.")
-    except:
-        await message.answer("❌ Ошибка отправки.")
-
-    await state.clear()
-
-
-# =====================================================
+# ==========================================
 # DASHBOARD
-# =====================================================
+# ==========================================
 
-@router.message(Command("admin"))
-async def admin_panel(message: Message):
-    if message.from_user.id != ADMIN_ID:
-        return
+async def build_dashboard_text():
+    total_users = await to_thread(get_users_count)
+    leads = await to_thread(get_all_leads)
 
-    total_users = get_users_count()
-    leads = get_all_leads()
+    new_count = sum(1 for l in leads if l[6] == "new")
 
     text = f"<b>📊 Панель управления</b>\n\n"
-    text += f"👥 Пользователей: {total_users}\n\n"
+    text += f"👥 Пользователей: {total_users}\n"
+    text += f"🆕 Новых заявок: {new_count}\n\n"
     text += "<b>Последние заявки:</b>\n"
 
     keyboard = []
 
-    for lead in leads[:5]:
+    for lead in leads[:2]:
         lead_id = lead[0]
         status = lead[6]
+
         display_id = lead_id + 1499
         formatted_id = f"MSK-{display_id}/26"
 
-        text += f"{formatted_id} | {status}\n"
+        icon = "🆕" if status == "new" else "🟡" if status == "in_work" else "✅"
+        text += f"{icon} {formatted_id}\n"
 
         keyboard.append([
             InlineKeyboardButton(text="🟡", callback_data=f"inwork:{lead_id}"),
@@ -287,4 +252,46 @@ async def admin_panel(message: Message):
 
     markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
 
-    await message.answer(text, parse_mode="HTML", reply_markup=markup)
+    return text, markup
+
+
+@router.message(Command("admin"))
+async def admin_panel(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    global active_dashboard
+
+    if active_dashboard["message"]:
+        try:
+            await active_dashboard["message"].delete()
+        except:
+            pass
+
+    text, markup = await build_dashboard_text()
+
+    panel_message = await message.answer(
+        text,
+        parse_mode="HTML",
+        reply_markup=markup
+    )
+
+    active_dashboard["message"] = panel_message
+
+
+async def refresh_dashboard_now():
+    global active_dashboard
+
+    if not active_dashboard["message"]:
+        return
+
+    try:
+        text, markup = await build_dashboard_text()
+
+        await active_dashboard["message"].edit_text(
+            text,
+            parse_mode="HTML",
+            reply_markup=markup
+        )
+    except:
+        pass
