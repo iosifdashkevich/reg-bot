@@ -29,8 +29,7 @@ from database import (
     add_user,
     get_users_count,
     get_lead_by_id,
-    get_all_leads,
-    get_last_lead_by_user
+    get_all_leads
 )
 
 router = Router()
@@ -127,7 +126,7 @@ async def finish(message: Message, state: FSMContext):
     display_id = lead_id + 1499
     formatted_id = f"MSK-{display_id}/26"
 
-    # ================= CLIENT MESSAGE =================
+    # CLIENT MESSAGE
 
     await message.answer(
         f"🏛 Обращение зарегистрировано.\n\n"
@@ -139,7 +138,7 @@ async def finish(message: Message, state: FSMContext):
         reply_markup=remove_kb()
     )
 
-    # ================= ADMIN MESSAGE =================
+    # ADMIN MESSAGE
 
     if username_raw:
         username_link = f"<a href='https://t.me/{username_raw}'>@{username_raw}</a>"
