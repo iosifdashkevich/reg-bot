@@ -1,4 +1,3 @@
-import random
 import asyncio
 
 from aiogram import Router, F
@@ -29,24 +28,21 @@ from database import (
     update_lead_status,
     add_user,
     get_users_count,
-    get_last_users,
     get_lead_by_id,
     get_all_leads
 )
 
 router = Router()
 
-# ==========================================
-# ACTIVE DASHBOARD (только одна панель)
-# ==========================================
+# ==================================================
+# ACTIVE DASHBOARD
+# ==================================================
 
-active_dashboard = {
-    "message": None
-}
+active_dashboard = {"message": None}
 
-# ==========================================
+# ==================================================
 # START
-# ==========================================
+# ==================================================
 
 @router.message(Command("start"))
 async def start(message: Message, state: FSMContext):
@@ -66,10 +62,9 @@ async def start(message: Message, state: FSMContext):
         reply_markup=citizenship_kb()
     )
 
-
-# ==========================================
+# ==================================================
 # ВОРОНКА
-# ==========================================
+# ==================================================
 
 @router.message(RegForm.citizenship)
 async def step_citizenship(message: Message, state: FSMContext):
@@ -77,13 +72,11 @@ async def step_citizenship(message: Message, state: FSMContext):
     await state.set_state(RegForm.term)
     await message.answer("Выберите срок регистрации:", reply_markup=term_kb())
 
-
 @router.message(RegForm.term)
 async def step_term(message: Message, state: FSMContext):
     await state.update_data(term=message.text)
     await state.set_state(RegForm.urgency)
     await message.answer("Когда нужно оформить?", reply_markup=urgency_kb())
-
 
 @router.message(RegForm.urgency)
 async def step_urgency(message: Message, state: FSMContext):
@@ -94,7 +87,6 @@ async def step_urgency(message: Message, state: FSMContext):
         reply_markup=consent_kb()
     )
 
-
 @router.message(RegForm.consent)
 async def step_consent(message: Message, state: FSMContext):
     if message.text != "✅ Согласен":
@@ -103,7 +95,6 @@ async def step_consent(message: Message, state: FSMContext):
 
     await state.set_state(RegForm.name)
     await message.answer("Как к вам можно обращаться?", reply_markup=remove_kb())
-
 
 @router.message(RegForm.name)
 async def step_name(message: Message, state: FSMContext):
@@ -114,10 +105,9 @@ async def step_name(message: Message, state: FSMContext):
         reply_markup=contact_kb()
     )
 
-
-# ==========================================
+# ==================================================
 # СОЗДАНИЕ ЗАЯВКИ
-# ==========================================
+# ==================================================
 
 @router.message(RegForm.contact)
 async def finish(message: Message, state: FSMContext):
@@ -152,7 +142,6 @@ async def finish(message: Message, state: FSMContext):
         reply_markup=remove_kb()
     )
 
-    # сообщение админу
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -174,10 +163,9 @@ async def finish(message: Message, state: FSMContext):
 
     await refresh_dashboard_now()
 
-
-# ==========================================
+# ==================================================
 # СТАТУСЫ
-# ==========================================
+# ==================================================
 
 @router.callback_query(F.data.startswith("inwork:"))
 async def set_inwork(cb: CallbackQuery):
@@ -198,7 +186,6 @@ async def set_inwork(cb: CallbackQuery):
 
     await refresh_dashboard_now()
 
-
 @router.callback_query(F.data.startswith("done:"))
 async def set_done(cb: CallbackQuery):
     await cb.answer()
@@ -217,20 +204,47 @@ async def set_done(cb: CallbackQuery):
 
     await refresh_dashboard_now()
 
+# ==================================================
+# ОТВЕТ АДМИНА
+# ==================================================
 
-# ==========================================
+@router.callback_query(F.data.startswith("reply:"))
+async def reply_start(cb: CallbackQuery, state: FSMContext):
+    await cb.answer()
+    user_id = int(cb.data.split(":")[1])
+    await state.update_data(reply_user_id=user_id)
+    await state.set_state(AdminReply.waiting_for_message)
+    await cb.message.answer("✍ Введите сообщение для пользователя:")
+
+@router.message(AdminReply.waiting_for_message)
+async def send_reply(message: Message, state: FSMContext):
+
+    data = await state.get_data()
+    user_id = data.get("reply_user_id")
+
+    if not user_id:
+        await message.answer("❌ Ошибка. Пользователь не найден.")
+        await state.clear()
+        return
+
+    try:
+        await message.bot.send_message(user_id, message.text)
+        await message.answer("✅ Сообщение отправлено пользователю.")
+    except:
+        await message.answer("❌ Не удалось отправить сообщение.")
+
+    await state.clear()
+
+# ==================================================
 # DASHBOARD
-# ==========================================
+# ==================================================
 
 async def build_dashboard_text():
     total_users = await to_thread(get_users_count)
     leads = await to_thread(get_all_leads)
 
-    new_count = sum(1 for l in leads if l[6] == "new")
-
     text = f"<b>📊 Панель управления</b>\n\n"
-    text += f"👥 Пользователей: {total_users}\n"
-    text += f"🆕 Новых заявок: {new_count}\n\n"
+    text += f"👥 Пользователей: {total_users}\n\n"
     text += "<b>Последние заявки:</b>\n"
 
     keyboard = []
@@ -251,9 +265,7 @@ async def build_dashboard_text():
         ])
 
     markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
-
     return text, markup
-
 
 @router.message(Command("admin"))
 async def admin_panel(message: Message):
@@ -278,7 +290,6 @@ async def admin_panel(message: Message):
 
     active_dashboard["message"] = panel_message
 
-
 async def refresh_dashboard_now():
     global active_dashboard
 
@@ -287,7 +298,6 @@ async def refresh_dashboard_now():
 
     try:
         text, markup = await build_dashboard_text()
-
         await active_dashboard["message"].edit_text(
             text,
             parse_mode="HTML",
