@@ -317,3 +317,46 @@ async def refresh_dashboard_now():
         )
     except:
         pass
+# =====================================================
+# МАССОВАЯ РАССЫЛКА
+# =====================================================
+
+@router.message(Command("broadcast"))
+async def broadcast_message(message: Message):
+
+    # Только админ
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    # Получаем текст после команды
+    text = message.text.replace("/broadcast", "").strip()
+
+    if not text:
+        await message.answer("❌ Укажите текст для рассылки.\n\nПример:\n/broadcast Текст сообщения")
+        return
+
+    await message.answer("📤 Начинаю рассылку...")
+
+    # Получаем всех пользователей
+    users = await to_thread(get_all_users_full)
+
+    total = len(users)
+    success = 0
+    failed = 0
+
+    for user in users:
+        user_id = user[0]  # предполагаем что id в первой колонке
+
+        try:
+            await message.bot.send_message(user_id, text)
+            success += 1
+            await asyncio.sleep(0.05)  # антифлуд
+        except:
+            failed += 1
+
+    await message.answer(
+        f"📊 Рассылка завершена\n\n"
+        f"Всего: {total}\n"
+        f"Отправлено: {success}\n"
+        f"Ошибок: {failed}"
+    )
