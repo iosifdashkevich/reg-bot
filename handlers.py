@@ -33,16 +33,11 @@ from database import (
 )
 
 router = Router()
-
-# ==================================================
-# ACTIVE DASHBOARD
-# ==================================================
-
 active_dashboard = {"message": None}
 
-# ==================================================
+# =====================================================
 # START
-# ==================================================
+# =====================================================
 
 @router.message(Command("start"))
 async def start(message: Message, state: FSMContext):
@@ -57,11 +52,14 @@ async def start(message: Message, state: FSMContext):
         reply_markup=channel_kb()
     )
 
-    await message.answer("Выберите ваш статус:", reply_markup=citizenship_kb())
+    await message.answer(
+        "Выберите ваш статус:",
+        reply_markup=citizenship_kb()
+    )
 
-# ==================================================
+# =====================================================
 # ВОРОНКА
-# ==================================================
+# =====================================================
 
 @router.message(RegForm.citizenship)
 async def step_citizenship(message: Message, state: FSMContext):
@@ -102,9 +100,9 @@ async def step_name(message: Message, state: FSMContext):
         reply_markup=contact_kb()
     )
 
-# ==================================================
+# =====================================================
 # СОЗДАНИЕ ЗАЯВКИ
-# ==================================================
+# =====================================================
 
 @router.message(RegForm.contact)
 async def finish(message: Message, state: FSMContext):
@@ -114,13 +112,12 @@ async def finish(message: Message, state: FSMContext):
 
     contact = message.contact.phone_number if message.contact else message.text
     username_raw = message.from_user.username
-    username_display = f"@{username_raw}" if username_raw else "нет"
 
     lead_id = await to_thread(add_lead, {
         "name": data.get("name"),
         "phone": contact,
         "telegram_id": message.from_user.id,
-        "username": username_display,
+        "username": f"@{username_raw}" if username_raw else "",
         "citizenship": data.get("citizenship"),
         "term": data.get("term"),
         "urgency": data.get("urgency")
@@ -129,7 +126,6 @@ async def finish(message: Message, state: FSMContext):
     display_id = lead_id + 1499
     formatted_id = f"MSK-{display_id}/26"
 
-    # сообщение клиенту
     await message.answer(
         f"🏛 Обращение зарегистрировано в системе.\n\n"
         f"🧾 Номер дела: <b>{formatted_id}</b>\n\n"
@@ -140,15 +136,18 @@ async def finish(message: Message, state: FSMContext):
         reply_markup=remove_kb()
     )
 
-    # сообщение админу
+    # username ссылка
+    if username_raw:
+        username_link = f"<a href='https://t.me/{username_raw}'>@{username_raw}</a>"
+    else:
+        username_link = "нет"
+
     admin_text = (
         f"🆕 <b>Заявка №{formatted_id}</b>\n\n"
         f"👤 <b>Имя:</b> {data.get('name')}\n"
         f"📞 <b>Телефон:</b> {contact}\n"
-        f"🆔 <b>ID:</b> "
-        f"<a href='tg://user?id={message.from_user.id}'>{message.from_user.id}</a>\n"
-        f"🔗 <b>Username:</b> "
-        f"{f'<a href=\"https://t.me/{username_raw}\">@{username_raw}</a>' if username_raw else 'нет'}\n\n"
+        f"🆔 <b>ID:</b> <a href='tg://user?id={message.from_user.id}'>{message.from_user.id}</a>\n"
+        f"🔗 <b>Username:</b> {username_link}\n\n"
         f"📅 <b>Срок:</b> {data.get('term')}\n"
         f"🚀 <b>Срочность:</b> {data.get('urgency')}\n"
         f"🌍 <b>Статус клиента:</b> {data.get('citizenship')}\n\n"
@@ -177,9 +176,9 @@ async def finish(message: Message, state: FSMContext):
 
     await refresh_dashboard_now()
 
-# ==================================================
-# СТАТУС В РАБОТЕ
-# ==================================================
+# =====================================================
+# СТАТУСЫ
+# =====================================================
 
 @router.callback_query(F.data.startswith("inwork:"))
 async def set_inwork(cb: CallbackQuery):
@@ -208,10 +207,6 @@ async def set_inwork(cb: CallbackQuery):
 
     await refresh_dashboard_now()
 
-# ==================================================
-# СТАТУС ЗАВЕРШЕНА
-# ==================================================
-
 @router.callback_query(F.data.startswith("done:"))
 async def set_done(cb: CallbackQuery):
     await cb.answer()
@@ -238,9 +233,9 @@ async def set_done(cb: CallbackQuery):
 
     await refresh_dashboard_now()
 
-# ==================================================
+# =====================================================
 # ОТВЕТ АДМИНА
-# ==================================================
+# =====================================================
 
 @router.callback_query(F.data.startswith("reply:"))
 async def reply_start(cb: CallbackQuery, state: FSMContext):
@@ -263,9 +258,9 @@ async def send_reply(message: Message, state: FSMContext):
 
     await state.clear()
 
-# ==================================================
+# =====================================================
 # DASHBOARD
-# ==================================================
+# =====================================================
 
 async def build_dashboard_text():
     total_users = await to_thread(get_users_count)
